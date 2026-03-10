@@ -46,11 +46,14 @@ export const RecentComments = ({
     queryKey: ["all-comments"],
     queryFn: async () => {
       if (!authToken) return [];
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || "http://localhost:5001"}/comments/all`, {
-        headers: {
-          Authorization: `Bearer ${authToken}`,
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL || "http://localhost:5001"}/comments/all`,
+        {
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+          },
         },
-      });
+      );
       if (!response.ok) return [];
       return response.json();
     },
@@ -64,7 +67,7 @@ export const RecentComments = ({
     return allComments
       .sort(
         (a, b) =>
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
       )
       .slice(0, 10);
   }, [allComments]);

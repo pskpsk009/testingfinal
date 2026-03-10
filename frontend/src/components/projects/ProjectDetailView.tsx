@@ -237,16 +237,16 @@ export const ProjectDetailView = ({
           return existing.map((candidate) =>
             candidate.id === updatedProject.id
               ? { ...candidate, status: updatedProject.status }
-              : candidate
+              : candidate,
           );
-        }
+        },
       );
 
       if (projects && onProjectUpdate) {
         const updatedList = projects.map((candidate) =>
           candidate.id === updatedProject.id
             ? { ...candidate, status: updatedProject.status }
-            : candidate
+            : candidate,
         );
         onProjectUpdate(updatedList);
       }
@@ -280,7 +280,7 @@ export const ProjectDetailView = ({
   const handleReviewAction = async (action: "approve" | "deny") => {
     if (action === "approve") {
       const confirmComplete = window.confirm(
-        "Are you sure you want to approve this project? This will make it visible in the archive."
+        "Are you sure you want to approve this project? This will make it visible in the archive.",
       );
       if (!confirmComplete) {
         return;
@@ -323,16 +323,16 @@ export const ProjectDetailView = ({
           return existing.map((candidate) =>
             candidate.id === updatedProject.id
               ? { ...candidate, grade: updatedProject.grade ?? null }
-              : candidate
+              : candidate,
           );
-        }
+        },
       );
 
       if (projects && onProjectUpdate) {
         const updatedList = projects.map((candidate) =>
           candidate.id === updatedProject.id
             ? { ...candidate, grade: updatedProject.grade ?? null }
-            : candidate
+            : candidate,
         );
         onProjectUpdate(updatedList);
       }
@@ -392,17 +392,20 @@ export const ProjectDetailView = ({
     if (user.role === "student" && project.students.includes(user.name)) {
       return true;
     }
-    
+
     // Project advisor can access
-    if (user.role === "advisor" && (project.advisor === user.name || project.advisorEmail === user.email)) {
+    if (
+      user.role === "advisor" &&
+      (project.advisor === user.name || project.advisorEmail === user.email)
+    ) {
       return true;
     }
-    
+
     // Coordinators can access (they oversee all projects)
     if (user.role === "coordinator") {
       return true;
     }
-    
+
     return false;
   };
 
@@ -417,7 +420,7 @@ export const ProjectDetailView = ({
           headers: {
             Authorization: `Bearer ${authToken}`,
           },
-        }
+        },
       );
       if (!response.ok) throw new Error("Failed to fetch comments");
       const data = await response.json();
@@ -446,7 +449,7 @@ export const ProjectDetailView = ({
             Authorization: `Bearer ${authToken}`,
           },
           body: JSON.stringify({ comment: commentText }),
-        }
+        },
       );
       if (!response.ok) throw new Error("Failed to post comment");
       return response.json();
@@ -479,7 +482,7 @@ export const ProjectDetailView = ({
           headers: {
             Authorization: `Bearer ${authToken}`,
           },
-        }
+        },
       );
       if (!response.ok) throw new Error("Failed to delete comment");
     },
@@ -557,16 +560,16 @@ export const ProjectDetailView = ({
           return existing.map((candidate) =>
             candidate.id === updatedProject.id
               ? { ...candidate, feedback: enrichedFeedback }
-              : candidate
+              : candidate,
           );
-        }
+        },
       );
 
       if (projects && onProjectUpdate) {
         const updatedList = projects.map((candidate) =>
           candidate.id === updatedProject.id
             ? { ...candidate, feedback: enrichedFeedback }
-            : candidate
+            : candidate,
         );
         onProjectUpdate(updatedList);
       }
@@ -613,7 +616,6 @@ export const ProjectDetailView = ({
   const isOwnProject = () => {
     return user.role === "student" && project.students.includes(user.name);
   };
-
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -678,7 +680,9 @@ export const ProjectDetailView = ({
                         <p className="text-sm text-gray-500">
                           {file.size} • {file.type}
                           {file.downloadable === false && (
-                            <span className="ml-2 text-amber-500">(metadata only)</span>
+                            <span className="ml-2 text-amber-500">
+                              (metadata only)
+                            </span>
                           )}
                         </p>
                       </div>
@@ -943,7 +947,7 @@ export const ProjectDetailView = ({
                         {project.completionDate === "Invalid Date"
                           ? "Not specified"
                           : new Date(
-                              project.completionDate
+                              project.completionDate,
                             ).toLocaleDateString()}
                       </p>
                     </div>
@@ -960,7 +964,7 @@ export const ProjectDetailView = ({
                         !project.submissionDate
                           ? "Not submitted yet"
                           : new Date(
-                              project.submissionDate
+                              project.submissionDate,
                             ).toLocaleDateString()}
                       </p>
                     </div>
@@ -1100,8 +1104,8 @@ export const ProjectDetailView = ({
               <CardHeader>
                 <CardTitle>Comments & Discussion</CardTitle>
                 <CardDescription>
-                  {project.status === "Approved" 
-                    ? "Project conversation history" 
+                  {project.status === "Approved"
+                    ? "Project conversation history"
                     : `Communicate with ${user.role === "student" ? "your advisor" : "students"}`}
                 </CardDescription>
               </CardHeader>
@@ -1112,33 +1116,38 @@ export const ProjectDetailView = ({
                     <div className="flex items-center space-x-2">
                       <MessageSquare className="w-4 h-4 text-blue-600" />
                       <span className="text-sm font-medium text-gray-700">
-                        {comments.length} {comments.length === 1 ? "message" : "messages"} in this conversation
+                        {comments.length}{" "}
+                        {comments.length === 1 ? "message" : "messages"} in this
+                        conversation
                       </span>
                     </div>
-                  <span className="text-xs text-gray-500">
-                    Last updated {formatCommentTime(comments[comments.length - 1]?.created_at)}
-                  </span>
-                </div>
-              )}
+                    <span className="text-xs text-gray-500">
+                      Last updated{" "}
+                      {formatCommentTime(
+                        comments[comments.length - 1]?.created_at,
+                      )}
+                    </span>
+                  </div>
+                )}
 
-              {/* Existing comments */}
-              {comments.length > 0 && (
-                <div className="space-y-4 mb-4">
-                  {comments.map((comment: any, index: number) => {
-                    const isOwnComment = comment.user_email === user.email;
-                    const isRecent = index >= comments.length - 3; // Last 3 comments
+                {/* Existing comments */}
+                {comments.length > 0 && (
+                  <div className="space-y-4 mb-4">
+                    {comments.map((comment: any, index: number) => {
+                      const isOwnComment = comment.user_email === user.email;
+                      const isRecent = index >= comments.length - 3; // Last 3 comments
                       const userRole = comment.user_role || "user";
                       const roleColor =
                         userRole === "advisor"
                           ? "bg-blue-500"
                           : userRole === "student"
-                          ? "bg-green-500"
-                          : "bg-gray-500";
+                            ? "bg-green-500"
+                            : "bg-gray-500";
 
                       return (
-                        <div 
-                          key={comment.id} 
-                          className={`flex space-x-3 ${isRecent ? 'bg-blue-50 -mx-4 px-4 py-3 rounded-lg' : ''}`}
+                        <div
+                          key={comment.id}
+                          className={`flex space-x-3 ${isRecent ? "bg-blue-50 -mx-4 px-4 py-3 rounded-lg" : ""}`}
                         >
                           <div
                             className={`w-10 h-10 ${roleColor} rounded-full flex items-center justify-center text-white text-sm font-semibold flex-shrink-0`}
@@ -1148,7 +1157,9 @@ export const ProjectDetailView = ({
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between mb-1">
                               <div className="flex items-center space-x-2">
-                                <span className={`font-semibold text-sm ${isRecent ? 'text-blue-900' : 'text-gray-900'}`}>
+                                <span
+                                  className={`font-semibold text-sm ${isRecent ? "text-blue-900" : "text-gray-900"}`}
+                                >
                                   {comment.user_name || "Unknown User"}
                                 </span>
                                 <Badge
@@ -1168,13 +1179,17 @@ export const ProjectDetailView = ({
                                   variant="ghost"
                                   size="sm"
                                   className="h-6 px-2 text-gray-400 hover:text-red-600"
-                                  onClick={() => handleDeleteComment(comment.id)}
+                                  onClick={() =>
+                                    handleDeleteComment(comment.id)
+                                  }
                                 >
                                   <Trash2 className="w-3 h-3" />
                                 </Button>
                               )}
                             </div>
-                            <p className={`text-sm leading-relaxed mb-2 break-words ${isRecent ? 'text-gray-800' : 'text-gray-700'}`}>
+                            <p
+                              className={`text-sm leading-relaxed mb-2 break-words ${isRecent ? "text-gray-800" : "text-gray-700"}`}
+                            >
                               {comment.comment}
                             </p>
                             <div className="text-xs text-gray-500">
@@ -1189,7 +1204,9 @@ export const ProjectDetailView = ({
 
                 {comments.length === 0 && (
                   <div className="text-center py-6 text-gray-500 text-sm">
-                    No comments yet.{project.status !== "Approved" && " Start the conversation!"}
+                    No comments yet.
+                    {project.status !== "Approved" &&
+                      " Start the conversation!"}
                   </div>
                 )}
 

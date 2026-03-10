@@ -25,7 +25,8 @@ interface ProjectCommentsProps {
   currentUserRole: string;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5001";
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:5001";
 
 export const ProjectComments = ({
   projectId,
@@ -227,7 +228,7 @@ export const ProjectComments = ({
                           </span>
                           <span
                             className={`text-xs px-2 py-0.5 rounded-full ${getRoleBadgeColor(
-                              comment.user.role
+                              comment.user.role,
                             )}`}
                           >
                             {comment.user.role}

@@ -1,13 +1,49 @@
-import nodemailer from "nodemailer";
 import { adminAuth } from "../config/firebase";
 
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_APP_PASSWORD,
-  },
+/* ------------------------------------------------------------------ */
+/*  Brevo Transactional Email API (HTTP – works on Render free tier)  */
+/* ------------------------------------------------------------------ */
+
+const BREVO_API_URL = "https://api.brevo.com/v3/smtp/email";
+
+const getBrevoApiKey = (): string => {
+  const key = process.env.BREVO_API_KEY;
+  if (!key) throw new Error("BREVO_API_KEY environment variable is not set");
+  return key;
+};
+
+const getSender = () => ({
+  name: "SE Project Hub",
+  email: process.env.GMAIL_USER || "pskpsk009@gmail.com",
 });
+
+async function sendEmailViaBrevo(
+  to: { email: string; name?: string },
+  subject: string,
+  htmlContent: string,
+): Promise<void> {
+  const response = await fetch(BREVO_API_URL, {
+    method: "POST",
+    headers: {
+      "api-key": getBrevoApiKey(),
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({
+      sender: getSender(),
+      to: [to],
+      subject,
+      htmlContent,
+    }),
+  });
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`Brevo API error (${response.status}): ${body}`);
+  }
+}
+
+/* ------------------------------------------------------------------ */
 
 interface Student {
   name: string;
@@ -39,12 +75,7 @@ export async function sendSignInLink(
                 <li>Change your password in <strong>Account Detail</strong> after signing in (recommended)</li>`
     : `<li>Set a password for future logins (recommended)</li>`;
 
-  // Send email using Gmail SMTP
-  await transporter.sendMail({
-    from: process.env.EMAIL_FROM || "SE Project Hub <pskpsk009@gmail.com>",
-    to: student.email,
-    subject: "Welcome to SE Project Hub - Sign In to Get Started",
-    html: `
+  const html = `
       <!DOCTYPE html>
       <html>
       <head>
@@ -103,8 +134,13 @@ export async function sendSignInLink(
         </div>
       </body>
       </html>
-    `,
-  });
+    `;
+
+  await sendEmailViaBrevo(
+    { email: student.email, name: student.name },
+    "Welcome to SE Project Hub - Sign In to Get Started",
+    html,
+  );
 }
 
 export async function sendBulkSignInLinks(
@@ -123,8 +159,8 @@ export async function sendBulkSignInLinks(
     try {
       await sendSignInLink(student, defaultPassword);
       success++;
-      // Delay to avoid Gmail rate limiting
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      // Delay to avoid Brevo rate limiting
+      await new Promise((resolve) => setTimeout(resolve, 300));
     } catch (error: unknown) {
       failed++;
       const message = error instanceof Error ? error.message : String(error);
@@ -138,7 +174,7 @@ export async function sendBulkSignInLinks(
 }
 
 /**
- * Send a welcome email via Nodemailer (Gmail SMTP) when a coordinator manually creates a new user.
+ * Send a welcome email via Brevo when a coordinator manually creates a new user.
  */
 export async function sendWelcomeEmail(input: {
   name: string;
@@ -148,11 +184,7 @@ export async function sendWelcomeEmail(input: {
 }): Promise<void> {
   const frontendUrl = process.env.FRONTEND_URL || "http://localhost:8080";
 
-  await transporter.sendMail({
-    from: process.env.EMAIL_FROM || "SE Project Hub <pskpsk009@gmail.com>",
-    to: input.email,
-    subject: "Your SE Project Hub Account Has Been Created",
-    html: `
+  const html = `
       <!DOCTYPE html>
       <html>
       <head>
@@ -198,8 +230,13 @@ export async function sendWelcomeEmail(input: {
         </div>
       </body>
       </html>
-    `,
-  });
+    `;
+
+  await sendEmailViaBrevo(
+    { email: input.email, name: input.name },
+    "Your SE Project Hub Account Has Been Created",
+    html,
+  );
 
   console.log("Welcome email sent to", input.email);
 }
