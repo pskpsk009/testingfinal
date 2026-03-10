@@ -6,7 +6,7 @@ import {
   verifyFirebaseAuth,
 } from "../middleware/auth";
 import { getSupabaseAdminClient } from "../services/supabaseClient";
-import { sendBulkSignInLinks } from "../services/emailService";
+import { sendBulkWelcomeEmails } from "../services/emailService";
 import { adminAuth } from "../config/firebase";
 import { createUser, findUserByEmail } from "../services/userService";
 
@@ -223,11 +223,11 @@ studentsRouter.post(
         }
       }
 
-      // Send sign-in links to students
+      // Send welcome emails to students (same as manual user creation)
       let emailResults = { success: 0, failed: 0, errors: [] as string[] };
 
       if (sendEmails && validStudents.length > 0) {
-        emailResults = await sendBulkSignInLinks(
+        emailResults = await sendBulkWelcomeEmails(
           validStudents,
           defaultPassword,
         );
@@ -327,7 +327,7 @@ studentsRouter.post(
         return;
       }
 
-      const emailResults = await sendBulkSignInLinks(
+      const emailResults = await sendBulkWelcomeEmails(
         [
           {
             name: student.name,

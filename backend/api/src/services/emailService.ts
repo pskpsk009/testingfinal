@@ -174,6 +174,45 @@ export async function sendBulkSignInLinks(
 }
 
 /**
+ * Send welcome emails to bulk-uploaded students with their credentials.
+ * Same approach as manual user creation – no magic sign-in link.
+ */
+export async function sendBulkWelcomeEmails(
+  students: Student[],
+  defaultPassword: string,
+): Promise<{
+  success: number;
+  failed: number;
+  errors: string[];
+}> {
+  let success = 0;
+  let failed = 0;
+  const errors: string[] = [];
+
+  for (const student of students) {
+    try {
+      await sendWelcomeEmail({
+        name: student.name,
+        email: student.email,
+        password: defaultPassword,
+        role: "student",
+      });
+      success++;
+      // Delay to avoid Brevo rate limiting
+      await new Promise((resolve) => setTimeout(resolve, 300));
+    } catch (error: unknown) {
+      failed++;
+      const message = error instanceof Error ? error.message : String(error);
+      errors.push(`${student.email}: ${message}`);
+      // eslint-disable-next-line no-console
+      console.error(`Failed to send email to ${student.email}:`, message);
+    }
+  }
+
+  return { success, failed, errors };
+}
+
+/**
  * Send a welcome email via Brevo when a coordinator manually creates a new user.
  */
 export async function sendWelcomeEmail(input: {
