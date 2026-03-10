@@ -279,8 +279,6 @@ usersRouter.patch(
       return;
     }
 
-
-
     let firebaseUid: string;
 
     try {
@@ -425,8 +423,6 @@ usersRouter.delete(
       res.status(404).json({ error: "User not found." });
       return;
     }
-
-
 
     const supabase = getSupabaseAdminClient();
 

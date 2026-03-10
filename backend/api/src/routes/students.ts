@@ -181,6 +181,10 @@ studentsRouter.post(
                   student.email,
                 );
                 firebaseUid = existingUser.uid;
+                // Reset password to the default so Student@123 works after logout
+                await adminAuth.updateUser(existingUser.uid, {
+                  password: defaultPassword,
+                });
               } catch {
                 // eslint-disable-next-line no-console
                 console.error(
