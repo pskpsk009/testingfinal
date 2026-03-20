@@ -230,7 +230,8 @@ export const CourseManagement = ({
   const assignMutation = useMutation({
     mutationFn: async () => {
       if (!authToken) throw new Error("No auth token");
-      if (!assigningCourse) throw new Error("No course selected for assignment");
+      if (!assigningCourse)
+        throw new Error("No course selected for assignment");
 
       const trimmedName = assignAdvisorName.trim();
       const trimmedEmail = assignAdvisorEmail.trim();
@@ -336,8 +337,8 @@ export const CourseManagement = ({
 
   const handleOpenAssign = (course: Course) => {
     setAssigningCourse(course);
-    setAssignAdvisorName(course.instructor === "TBD" ? "" : course.instructor);
-    setAssignAdvisorEmail(course.advisorEmail);
+    setAssignAdvisorName("");
+    setAssignAdvisorEmail("");
     setIsAssignDialogOpen(true);
   };
 
@@ -606,7 +607,11 @@ export const CourseManagement = ({
                 >
                   Cancel
                 </Button>
-                <Button type="button" onClick={handleAssign} disabled={assignMutation.isPending}>
+                <Button
+                  type="button"
+                  onClick={handleAssign}
+                  disabled={assignMutation.isPending}
+                >
                   Assign
                 </Button>
               </div>

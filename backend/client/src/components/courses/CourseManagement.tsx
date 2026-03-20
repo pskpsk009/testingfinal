@@ -162,8 +162,8 @@ export const CourseManagement = ({ user }: CourseManagementProps) => {
     if (editingCourse) {
       setCourses(
         courses.map((course) =>
-          course.id === editingCourse.id ? newCourse : course
-        )
+          course.id === editingCourse.id ? newCourse : course,
+        ),
       );
       toast({
         title: "Course Updated",
@@ -207,8 +207,8 @@ export const CourseManagement = ({ user }: CourseManagementProps) => {
 
   const handleOpenAssign = (course: Course) => {
     setAssigningCourse(course);
-    setAssignAdvisorName(course.instructor);
-    setAssignAdvisorEmail(course.advisorEmail);
+    setAssignAdvisorName("");
+    setAssignAdvisorEmail("");
     setIsAssignDialogOpen(true);
   };
 
@@ -271,7 +271,7 @@ export const CourseManagement = ({ user }: CourseManagementProps) => {
   });
 
   const uniqueYears = [...new Set(courses.map((course) => course.year))].sort(
-    (a, b) => b.localeCompare(a)
+    (a, b) => b.localeCompare(a),
   );
 
   return (
