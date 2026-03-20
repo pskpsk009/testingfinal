@@ -684,7 +684,9 @@ export const CourseManagement = ({
                     <TableCell>{course.year}</TableCell>
                     <TableCell>{course.credits}</TableCell>
                     <TableCell>{course.instructor}</TableCell>
-                    <TableCell>{course.advisorEmail || "Not Assigned"}</TableCell>
+                    <TableCell>
+                      {course.advisorEmail || "Not Assigned"}
+                    </TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
                         <Button

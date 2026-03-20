@@ -181,7 +181,9 @@ export const ProjectDetailView = ({
   const [selectedAction, setSelectedAction] = useState<string | null>(null);
   const [gradeSelection, setGradeSelection] = useState<string>("");
   const [newComment, setNewComment] = useState("");
-  const [isAssignRubricDialogOpen, setIsAssignRubricDialogOpen] = useState(false);
+  const [isAssignRubricDialogOpen, setIsAssignRubricDialogOpen] =
+    useState(false);
+  const [isViewRubricDialogOpen, setIsViewRubricDialogOpen] = useState(false);
   const [selectedRubricId, setSelectedRubricId] = useState<string>("");
   const queryClient = useQueryClient();
 
@@ -205,13 +207,15 @@ export const ProjectDetailView = ({
       }
       return fetchRubrics(authToken);
     },
-    enabled: Boolean(authToken && user.role === "advisor"),
+    enabled: Boolean(authToken),
   });
 
   const activeRubrics = rubricDtos.filter((rubric) => rubric.is_active);
   const assignedRubricId =
     typeof project.rubricId === "number" ? project.rubricId : null;
-  const assignedRubric = activeRubrics.find((rubric) => rubric.id === assignedRubricId);
+  const assignedRubric = rubricDtos.find(
+    (rubric) => rubric.id === assignedRubricId,
+  );
 
   const assignRubricMutation = useMutation({
     mutationFn: async (rubricId: number) => {
@@ -262,9 +266,7 @@ export const ProjectDetailView = ({
     },
     onError: (error: unknown) => {
       const message =
-        error instanceof Error
-          ? error.message
-          : "Failed to assign rubric.";
+        error instanceof Error ? error.message : "Failed to assign rubric.";
       toast({
         title: "Assignment failed",
         description: message,
@@ -1007,11 +1009,26 @@ export const ProjectDetailView = ({
             <CardHeader>
               <div className="flex items-center justify-between gap-3">
                 <CardTitle>Project Details</CardTitle>
-                {user.role === "advisor" && (
-                  <Button size="sm" variant="outline" onClick={handleOpenAssignRubricDialog}>
-                    Assign Rubric
-                  </Button>
-                )}
+                <div className="flex items-center gap-2">
+                  {user.role === "student" && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setIsViewRubricDialogOpen(true)}
+                    >
+                      View Rubric
+                    </Button>
+                  )}
+                  {user.role === "advisor" && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleOpenAssignRubricDialog}
+                    >
+                      Assign Rubric
+                    </Button>
+                  )}
+                </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -1417,6 +1434,91 @@ export const ProjectDetailView = ({
                 >
                   Assign
                 </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={isViewRubricDialogOpen}
+        onOpenChange={setIsViewRubricDialogOpen}
+      >
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Project Rubric</DialogTitle>
+            <DialogDescription>
+              {assignedRubric
+                ? "This rubric is currently assigned to your project."
+                : "No rubric has been assigned to this project yet."}
+            </DialogDescription>
+          </DialogHeader>
+
+          {isLoadingRubrics ? (
+            <p className="text-sm text-muted-foreground">Loading rubric...</p>
+          ) : !assignedRubric ? (
+            <div className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
+              Rubric placeholder: your advisor has not assigned a rubric yet.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {assignedRubric.name}
+                </h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  {assignedRubric.description || "No rubric description."}
+                </p>
+                <p className="text-sm text-gray-700 mt-2">
+                  Max Points: {assignedRubric.max_points}
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <h4 className="font-medium text-gray-900">
+                  Criteria ({assignedRubric.criteria.length})
+                </h4>
+                {assignedRubric.criteria.map((criterion) => (
+                  <div key={criterion.id} className="rounded-md border p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-medium text-sm text-gray-900">
+                        {criterion.name}
+                      </p>
+                      <Badge variant="outline">Weight: {criterion.weight}%</Badge>
+                    </div>
+                    {criterion.description && (
+                      <p className="text-sm text-gray-600 mt-1">
+                        {criterion.description}
+                      </p>
+                    )}
+
+                    {criterion.levels.length > 0 && (
+                      <div className="mt-3 space-y-2">
+                        {criterion.levels
+                          .slice()
+                          .sort((a, b) => b.points - a.points)
+                          .map((level) => (
+                            <div
+                              key={level.id}
+                              className="flex items-start justify-between gap-3 rounded-sm bg-gray-50 px-2 py-1"
+                            >
+                              <div>
+                                <p className="text-sm font-medium text-gray-800">
+                                  {level.name}
+                                </p>
+                                <p className="text-xs text-gray-600">
+                                  {level.description || "No description"}
+                                </p>
+                              </div>
+                              <span className="text-xs font-semibold text-gray-800">
+                                {level.points} pts
+                              </span>
+                            </div>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
           )}

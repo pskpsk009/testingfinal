@@ -63,7 +63,9 @@ export const requireAdvisor: RequestHandler = (
   const role = req.user?.role;
 
   if (role !== ADVISOR_ROLE) {
-    res.status(403).json({ error: "Forbidden", message: "Advisor role required." });
+    res
+      .status(403)
+      .json({ error: "Forbidden", message: "Advisor role required." });
     return;
   }
 

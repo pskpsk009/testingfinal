@@ -39,7 +39,11 @@ import {
   Plus,
 } from "lucide-react";
 import { useCourses } from "@/hooks/use-courses";
-import { fetchCourseProjects, fetchCourseRoster, type RosterEntryDto } from "@/services/courseApi";
+import {
+  fetchCourseProjects,
+  fetchCourseRoster,
+  type RosterEntryDto,
+} from "@/services/courseApi";
 import { updateProjectStatus } from "@/services/projectApi";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -87,7 +91,8 @@ export const AdvisorCoursePlaceholder = ({
     Record<string, string>
   >({});
   const [isStudentsDialogOpen, setIsStudentsDialogOpen] = useState(false);
-  const [studentsDialogCourse, setStudentsDialogCourse] = useState<AdvisorCourse | null>(null);
+  const [studentsDialogCourse, setStudentsDialogCourse] =
+    useState<AdvisorCourse | null>(null);
   const [courseStudents, setCourseStudents] = useState<RosterEntryDto[]>([]);
   const [isLoadingStudents, setIsLoadingStudents] = useState(false);
   const { data: coursesData = [], isLoading } = useCourses(authToken);
@@ -571,11 +576,15 @@ export const AdvisorCoursePlaceholder = ({
         </CardContent>
       </Card>
 
-      <Dialog open={isStudentsDialogOpen} onOpenChange={setIsStudentsDialogOpen}>
+      <Dialog
+        open={isStudentsDialogOpen}
+        onOpenChange={setIsStudentsDialogOpen}
+      >
         <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>
-              Students{studentsDialogCourse ? ` - ${studentsDialogCourse.code}` : ""}
+              Students
+              {studentsDialogCourse ? ` - ${studentsDialogCourse.code}` : ""}
             </DialogTitle>
             <DialogDescription>
               Students uploaded via CSV for this course.

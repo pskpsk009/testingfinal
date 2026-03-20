@@ -4,10 +4,29 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Edit, Trash2, Eye, Save, X, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -58,12 +77,45 @@ interface RubricManagementProps {
 
 // Sample PLOs data
 const samplePLOs: PLO[] = [
-  { id: "plo1", code: "PLO1", description: "Apply knowledge of computing and mathematics appropriate to the discipline", category: "Knowledge" },
-  { id: "plo2", code: "PLO2", description: "Analyze a problem, and identify and define computing requirements", category: "Problem Analysis" },
-  { id: "plo3", code: "PLO3", description: "Design, implement, and evaluate computer-based systems", category: "Design/Development" },
-  { id: "plo4", code: "PLO4", description: "Function effectively on teams to accomplish a common goal", category: "Teamwork" },
-  { id: "plo5", code: "PLO5", description: "Communicate effectively with a range of audiences", category: "Communication" },
-  { id: "plo6", code: "PLO6", description: "Analyze local and global impact of computing on individuals and society", category: "Ethics" }
+  {
+    id: "plo1",
+    code: "PLO1",
+    description:
+      "Apply knowledge of computing and mathematics appropriate to the discipline",
+    category: "Knowledge",
+  },
+  {
+    id: "plo2",
+    code: "PLO2",
+    description:
+      "Analyze a problem, and identify and define computing requirements",
+    category: "Problem Analysis",
+  },
+  {
+    id: "plo3",
+    code: "PLO3",
+    description: "Design, implement, and evaluate computer-based systems",
+    category: "Design/Development",
+  },
+  {
+    id: "plo4",
+    code: "PLO4",
+    description: "Function effectively on teams to accomplish a common goal",
+    category: "Teamwork",
+  },
+  {
+    id: "plo5",
+    code: "PLO5",
+    description: "Communicate effectively with a range of audiences",
+    category: "Communication",
+  },
+  {
+    id: "plo6",
+    code: "PLO6",
+    description:
+      "Analyze local and global impact of computing on individuals and society",
+    category: "Ethics",
+  },
 ];
 
 // Helper to convert API RubricDto to local view format
@@ -93,22 +145,34 @@ const toLocalRubric = (dto: RubricDto) => ({
 
 type LocalRubric = ReturnType<typeof toLocalRubric>;
 
-export const RubricManagement = ({ user, authToken }: RubricManagementProps) => {
+export const RubricManagement = ({
+  user,
+  authToken,
+}: RubricManagementProps) => {
   const { toast } = useToast();
   const [rubrics, setRubrics] = useState<LocalRubric[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [setupRequired, setSetupRequired] = useState(false);
-  const [selectedRubric, setSelectedRubric] = useState<LocalRubric | null>(null);
+  const [selectedRubric, setSelectedRubric] = useState<LocalRubric | null>(
+    null,
+  );
   const [isCreating, setIsCreating] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState("list");
   const [isSaving, setIsSaving] = useState(false);
 
-  const [newRubric, setNewRubric] = useState<Partial<{ name: string; description: string; projectTypes: string[]; criteria: RubricCriterion[] }>>({
+  const [newRubric, setNewRubric] = useState<
+    Partial<{
+      name: string;
+      description: string;
+      projectTypes: string[];
+      criteria: RubricCriterion[];
+    }>
+  >({
     name: "",
     description: "",
     projectTypes: [],
-    criteria: []
+    criteria: [],
   });
 
   // ── Load rubrics from API ────────────────────────────────────────────
@@ -121,10 +185,18 @@ export const RubricManagement = ({ user, authToken }: RubricManagementProps) => 
       setRubrics(data.map(toLocalRubric));
     } catch (err: any) {
       const msg: string = err.message ?? "";
-      if (msg.toLowerCase().includes("migration") || msg.toLowerCase().includes("setup") || msg.toLowerCase().includes("not been created")) {
+      if (
+        msg.toLowerCase().includes("migration") ||
+        msg.toLowerCase().includes("setup") ||
+        msg.toLowerCase().includes("not been created")
+      ) {
         setSetupRequired(true);
       } else {
-        toast({ title: "Error", description: msg || "Failed to load rubrics", variant: "destructive" });
+        toast({
+          title: "Error",
+          description: msg || "Failed to load rubrics",
+          variant: "destructive",
+        });
       }
     } finally {
       setIsLoading(false);
@@ -144,11 +216,17 @@ export const RubricManagement = ({ user, authToken }: RubricManagementProps) => 
       { id: "l1", name: "Excellent", description: "", points: 4 },
       { id: "l2", name: "Good", description: "", points: 3 },
       { id: "l3", name: "Satisfactory", description: "", points: 2 },
-      { id: "l4", name: "Needs Improvement", description: "", points: 1 }
-    ]
+      { id: "l4", name: "Needs Improvement", description: "", points: 1 },
+    ],
   });
 
-  const projectTypes = ["Capstone", "Competition Work", "Academic Publication", "Social Service", "Other"];
+  const projectTypes = [
+    "Capstone",
+    "Competition Work",
+    "Academic Publication",
+    "Social Service",
+    "Other",
+  ];
 
   const addCriterion = () => {
     if (!newCriterion.name || !newCriterion.description) {
@@ -166,12 +244,12 @@ export const RubricManagement = ({ user, authToken }: RubricManagementProps) => 
       description: newCriterion.description,
       ploIds: newCriterion.ploIds || [],
       weight: newCriterion.weight || 10,
-      levels: newCriterion.levels || []
+      levels: newCriterion.levels || [],
     };
 
-    setNewRubric(prev => ({
+    setNewRubric((prev) => ({
       ...prev,
-      criteria: [...(prev.criteria || []), criterion]
+      criteria: [...(prev.criteria || []), criterion],
     }));
 
     setNewCriterion({
@@ -183,22 +261,30 @@ export const RubricManagement = ({ user, authToken }: RubricManagementProps) => 
         { id: "l1", name: "Excellent", description: "", points: 4 },
         { id: "l2", name: "Good", description: "", points: 3 },
         { id: "l3", name: "Satisfactory", description: "", points: 2 },
-        { id: "l4", name: "Needs Improvement", description: "", points: 1 }
-      ]
+        { id: "l4", name: "Needs Improvement", description: "", points: 1 },
+      ],
     });
   };
 
   const saveRubric = async () => {
-    if (!newRubric.name || !newRubric.description || !newRubric.criteria?.length) {
+    if (
+      !newRubric.name ||
+      !newRubric.description ||
+      !newRubric.criteria?.length
+    ) {
       toast({
         title: "Error",
-        description: "Please fill in all required fields and add at least one criterion",
+        description:
+          "Please fill in all required fields and add at least one criterion",
         variant: "destructive",
       });
       return;
     }
 
-    const totalWeight = newRubric.criteria.reduce((sum, criterion) => sum + criterion.weight, 0);
+    const totalWeight = newRubric.criteria.reduce(
+      (sum, criterion) => sum + criterion.weight,
+      0,
+    );
     if (totalWeight !== 100) {
       toast({
         title: "Error",
@@ -209,7 +295,11 @@ export const RubricManagement = ({ user, authToken }: RubricManagementProps) => 
     }
 
     if (!authToken) {
-      toast({ title: "Error", description: "Not authenticated", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: "Not authenticated",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -228,36 +318,54 @@ export const RubricManagement = ({ user, authToken }: RubricManagementProps) => 
     setIsSaving(true);
     try {
       if (isEditing && selectedRubric) {
-        await updateRubric(parseInt(selectedRubric.id), {
-          name: newRubric.name,
-          description: newRubric.description,
-          projectTypes: newRubric.projectTypes ?? [],
-          criteria: criteriaPayload,
-          maxPoints: 100,
-        }, authToken);
+        await updateRubric(
+          parseInt(selectedRubric.id),
+          {
+            name: newRubric.name,
+            description: newRubric.description,
+            projectTypes: newRubric.projectTypes ?? [],
+            criteria: criteriaPayload,
+            maxPoints: 100,
+          },
+          authToken,
+        );
       } else {
-        await createRubric({
-          name: newRubric.name,
-          description: newRubric.description,
-          projectTypes: newRubric.projectTypes ?? [],
-          criteria: criteriaPayload,
-          maxPoints: 100,
-        }, authToken);
+        await createRubric(
+          {
+            name: newRubric.name,
+            description: newRubric.description,
+            projectTypes: newRubric.projectTypes ?? [],
+            criteria: criteriaPayload,
+            maxPoints: 100,
+          },
+          authToken,
+        );
       }
 
       await loadRubrics();
       setIsCreating(false);
       setIsEditing(false);
       setSelectedRubric(null);
-      setNewRubric({ name: "", description: "", projectTypes: [], criteria: [] });
+      setNewRubric({
+        name: "",
+        description: "",
+        projectTypes: [],
+        criteria: [],
+      });
       setActiveTab("list");
 
       toast({
         title: "Success",
-        description: isEditing ? "Rubric updated successfully" : "Rubric created successfully",
+        description: isEditing
+          ? "Rubric updated successfully"
+          : "Rubric created successfully",
       });
     } catch (err: any) {
-      toast({ title: "Error", description: err.message ?? "Failed to save rubric", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: err.message ?? "Failed to save rubric",
+        variant: "destructive",
+      });
     } finally {
       setIsSaving(false);
     }
@@ -283,7 +391,11 @@ export const RubricManagement = ({ user, authToken }: RubricManagementProps) => 
       await loadRubrics();
       toast({ title: "Success", description: "Rubric deleted successfully" });
     } catch (err: any) {
-      toast({ title: "Error", description: err.message ?? "Failed to delete rubric", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: err.message ?? "Failed to delete rubric",
+        variant: "destructive",
+      });
     }
   };
 
@@ -293,19 +405,25 @@ export const RubricManagement = ({ user, authToken }: RubricManagementProps) => 
       await toggleRubricStatusApi(parseInt(id), authToken);
       await loadRubrics();
     } catch (err: any) {
-      toast({ title: "Error", description: err.message ?? "Failed to toggle status", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: err.message ?? "Failed to toggle status",
+        variant: "destructive",
+      });
     }
   };
 
   const getPLODisplayName = (ploId: string) => {
-    const plo = samplePLOs.find(p => p.id === ploId);
+    const plo = samplePLOs.find((p) => p.id === ploId);
     return plo ? `${plo.code}: ${plo.description}` : ploId;
   };
 
   if (user.role !== "advisor") {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-muted-foreground">Only advisors can manage rubrics.</p>
+        <p className="text-muted-foreground">
+          Only advisors can manage rubrics.
+        </p>
       </div>
     );
   }
@@ -315,20 +433,46 @@ export const RubricManagement = ({ user, authToken }: RubricManagementProps) => 
       <div className="space-y-6">
         <div>
           <h2 className="text-3xl font-bold">Rubric Management</h2>
-          <p className="text-muted-foreground">Create and manage evaluation rubrics linked to PLOs</p>
+          <p className="text-muted-foreground">
+            Create and manage evaluation rubrics linked to PLOs
+          </p>
         </div>
         <Card>
           <CardHeader>
-            <CardTitle className="text-amber-600">⚠ Database Setup Required</CardTitle>
+            <CardTitle className="text-amber-600">
+              ⚠ Database Setup Required
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <p>The rubric tables have not been created in the database yet. To enable rubric management, run the database migration:</p>
+            <p>
+              The rubric tables have not been created in the database yet. To
+              enable rubric management, run the database migration:
+            </p>
             <div className="rounded-md bg-muted p-4 font-mono text-sm space-y-2">
-              <p className="font-semibold">Option 1 — Run the migration script:</p>
-              <code className="block">cd backend/api && node scripts/runMigration.js</code>
-              <p className="font-semibold mt-4">Option 2 — Paste SQL in the Supabase Dashboard:</p>
-              <p>Open the <a href="https://supabase.com/dashboard/project/pkgqgvwkvcuigxbwrmkj/sql/new" target="_blank" rel="noreferrer" className="text-blue-600 underline">SQL Editor</a> and run the contents of:</p>
-              <code className="block">backend/database/migrations/20260223_add_rubrics.sql</code>
+              <p className="font-semibold">
+                Option 1 — Run the migration script:
+              </p>
+              <code className="block">
+                cd backend/api && node scripts/runMigration.js
+              </code>
+              <p className="font-semibold mt-4">
+                Option 2 — Paste SQL in the Supabase Dashboard:
+              </p>
+              <p>
+                Open the{" "}
+                <a
+                  href="https://supabase.com/dashboard/project/pkgqgvwkvcuigxbwrmkj/sql/new"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-blue-600 underline"
+                >
+                  SQL Editor
+                </a>{" "}
+                and run the contents of:
+              </p>
+              <code className="block">
+                backend/database/migrations/20260223_add_rubrics.sql
+              </code>
             </div>
             <Button onClick={() => void loadRubrics()} variant="outline">
               Retry Connection
@@ -344,7 +488,9 @@ export const RubricManagement = ({ user, authToken }: RubricManagementProps) => 
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-3xl font-bold">Rubric Management</h2>
-          <p className="text-muted-foreground">Create and manage evaluation rubrics linked to PLOs</p>
+          <p className="text-muted-foreground">
+            Create and manage evaluation rubrics linked to PLOs
+          </p>
         </div>
       </div>
 
@@ -359,12 +505,19 @@ export const RubricManagement = ({ user, authToken }: RubricManagementProps) => 
 
         <TabsContent value="list" className="space-y-4">
           <div className="flex justify-end">
-            <Button onClick={() => {
-              setIsCreating(true);
-              setIsEditing(false);
-              setNewRubric({ name: "", description: "", projectTypes: [], criteria: [] });
-              setActiveTab("create");
-            }}>
+            <Button
+              onClick={() => {
+                setIsCreating(true);
+                setIsEditing(false);
+                setNewRubric({
+                  name: "",
+                  description: "",
+                  projectTypes: [],
+                  criteria: [],
+                });
+                setActiveTab("create");
+              }}
+            >
               <Plus className="w-4 h-4 mr-2" />
               Create New Rubric
             </Button>
@@ -385,117 +538,152 @@ export const RubricManagement = ({ user, authToken }: RubricManagementProps) => 
                   No rubrics yet. Create your first rubric to get started.
                 </div>
               ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Project Types</TableHead>
-                    <TableHead>Criteria Count</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {rubrics.map((rubric) => (
-                    <TableRow key={rubric.id}>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium">{rubric.name}</p>
-                          <p className="text-sm text-muted-foreground">{rubric.description}</p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {rubric.projectTypes.map(type => (
-                            <Badge key={type} variant="secondary" className="text-xs">
-                              {type}
-                            </Badge>
-                          ))}
-                        </div>
-                      </TableCell>
-                      <TableCell>{rubric.criteria.length}</TableCell>
-                      <TableCell>
-                        <Badge variant={rubric.isActive ? "default" : "secondary"}>
-                          {rubric.isActive ? "Active" : "Inactive"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{rubric.createdAt}</TableCell>
-                      <TableCell>
-                        <div className="flex space-x-2">
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button variant="outline" size="sm">
-                                <Eye className="w-4 h-4" />
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent className="max-w-4xl">
-                              <DialogHeader>
-                                <DialogTitle>{rubric.name}</DialogTitle>
-                              </DialogHeader>
-                              <div className="space-y-4 max-h-[70vh] overflow-y-auto">
-                                <p className="text-sm text-muted-foreground">{rubric.description}</p>
-                                {rubric.criteria.map((criterion) => (
-                                  <Card key={criterion.id}>
-                                    <CardHeader>
-                                      <CardTitle className="text-lg flex justify-between">
-                                        {criterion.name}
-                                        <Badge variant="outline">{criterion.weight}%</Badge>
-                                      </CardTitle>
-                                      <p className="text-sm text-muted-foreground">{criterion.description}</p>
-                                      <div className="flex flex-wrap gap-1">
-                                        {criterion.ploIds.map(ploId => {
-                                          const plo = samplePLOs.find(p => p.id === ploId);
-                                          return (
-                                            <Badge key={ploId} variant="secondary" className="text-xs">
-                                              {plo?.code}
-                                            </Badge>
-                                          );
-                                        })}
-                                      </div>
-                                    </CardHeader>
-                                    <CardContent>
-                                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                                        {criterion.levels.map((level) => (
-                                          <div key={level.id} className="border rounded p-3">
-                                            <div className="flex justify-between items-center mb-2">
-                                              <h4 className="font-medium">{level.name}</h4>
-                                              <Badge variant="outline">{level.points} pts</Badge>
-                                            </div>
-                                            <p className="text-sm text-muted-foreground">{level.description}</p>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </CardContent>
-                                  </Card>
-                                ))}
-                              </div>
-                            </DialogContent>
-                          </Dialog>
-                          <Button variant="outline" size="sm" onClick={() => editRubric(rubric)}>
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={() => handleToggleRubricStatus(rubric.id)}
-                          >
-                            {rubric.isActive ? "Deactivate" : "Activate"}
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={() => handleDeleteRubric(rubric.id)}
-                            className="text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Project Types</TableHead>
+                      <TableHead>Criteria Count</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Created</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {rubrics.map((rubric) => (
+                      <TableRow key={rubric.id}>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{rubric.name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {rubric.description}
+                            </p>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1">
+                            {rubric.projectTypes.map((type) => (
+                              <Badge
+                                key={type}
+                                variant="secondary"
+                                className="text-xs"
+                              >
+                                {type}
+                              </Badge>
+                            ))}
+                          </div>
+                        </TableCell>
+                        <TableCell>{rubric.criteria.length}</TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={rubric.isActive ? "default" : "secondary"}
+                          >
+                            {rubric.isActive ? "Active" : "Inactive"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{rubric.createdAt}</TableCell>
+                        <TableCell>
+                          <div className="flex space-x-2">
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button variant="outline" size="sm">
+                                  <Eye className="w-4 h-4" />
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent className="max-w-4xl">
+                                <DialogHeader>
+                                  <DialogTitle>{rubric.name}</DialogTitle>
+                                </DialogHeader>
+                                <div className="space-y-4 max-h-[70vh] overflow-y-auto">
+                                  <p className="text-sm text-muted-foreground">
+                                    {rubric.description}
+                                  </p>
+                                  {rubric.criteria.map((criterion) => (
+                                    <Card key={criterion.id}>
+                                      <CardHeader>
+                                        <CardTitle className="text-lg flex justify-between">
+                                          {criterion.name}
+                                          <Badge variant="outline">
+                                            {criterion.weight}%
+                                          </Badge>
+                                        </CardTitle>
+                                        <p className="text-sm text-muted-foreground">
+                                          {criterion.description}
+                                        </p>
+                                        <div className="flex flex-wrap gap-1">
+                                          {criterion.ploIds.map((ploId) => {
+                                            const plo = samplePLOs.find(
+                                              (p) => p.id === ploId,
+                                            );
+                                            return (
+                                              <Badge
+                                                key={ploId}
+                                                variant="secondary"
+                                                className="text-xs"
+                                              >
+                                                {plo?.code}
+                                              </Badge>
+                                            );
+                                          })}
+                                        </div>
+                                      </CardHeader>
+                                      <CardContent>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                          {criterion.levels.map((level) => (
+                                            <div
+                                              key={level.id}
+                                              className="border rounded p-3"
+                                            >
+                                              <div className="flex justify-between items-center mb-2">
+                                                <h4 className="font-medium">
+                                                  {level.name}
+                                                </h4>
+                                                <Badge variant="outline">
+                                                  {level.points} pts
+                                                </Badge>
+                                              </div>
+                                              <p className="text-sm text-muted-foreground">
+                                                {level.description}
+                                              </p>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </CardContent>
+                                    </Card>
+                                  ))}
+                                </div>
+                              </DialogContent>
+                            </Dialog>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => editRubric(rubric)}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                handleToggleRubricStatus(rubric.id)
+                              }
+                            >
+                              {rubric.isActive ? "Deactivate" : "Activate"}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDeleteRubric(rubric.id)}
+                              className="text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               )}
             </CardContent>
           </Card>
@@ -504,7 +692,9 @@ export const RubricManagement = ({ user, authToken }: RubricManagementProps) => 
         <TabsContent value="create" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>{isEditing ? "Edit Rubric" : "Create New Rubric"}</CardTitle>
+              <CardTitle>
+                {isEditing ? "Edit Rubric" : "Create New Rubric"}
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -513,7 +703,12 @@ export const RubricManagement = ({ user, authToken }: RubricManagementProps) => 
                   <Input
                     id="rubricName"
                     value={newRubric.name || ""}
-                    onChange={(e) => setNewRubric(prev => ({ ...prev, name: e.target.value }))}
+                    onChange={(e) =>
+                      setNewRubric((prev) => ({
+                        ...prev,
+                        name: e.target.value,
+                      }))
+                    }
                     placeholder="Enter rubric name"
                   />
                 </div>
@@ -522,9 +717,9 @@ export const RubricManagement = ({ user, authToken }: RubricManagementProps) => 
                   <Select
                     onValueChange={(value) => {
                       if (!newRubric.projectTypes?.includes(value)) {
-                        setNewRubric(prev => ({
+                        setNewRubric((prev) => ({
                           ...prev,
-                          projectTypes: [...(prev.projectTypes || []), value]
+                          projectTypes: [...(prev.projectTypes || []), value],
                         }));
                       }
                     }}
@@ -533,21 +728,31 @@ export const RubricManagement = ({ user, authToken }: RubricManagementProps) => 
                       <SelectValue placeholder="Add project types" />
                     </SelectTrigger>
                     <SelectContent>
-                      {projectTypes.map(type => (
-                        <SelectItem key={type} value={type}>{type}</SelectItem>
+                      {projectTypes.map((type) => (
+                        <SelectItem key={type} value={type}>
+                          {type}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                   <div className="flex flex-wrap gap-1 mt-2">
-                    {newRubric.projectTypes?.map(type => (
-                      <Badge key={type} variant="secondary" className="flex items-center space-x-1">
+                    {newRubric.projectTypes?.map((type) => (
+                      <Badge
+                        key={type}
+                        variant="secondary"
+                        className="flex items-center space-x-1"
+                      >
                         <span>{type}</span>
                         <button
                           type="button"
-                          onClick={() => setNewRubric(prev => ({
-                            ...prev,
-                            projectTypes: prev.projectTypes?.filter(t => t !== type)
-                          }))}
+                          onClick={() =>
+                            setNewRubric((prev) => ({
+                              ...prev,
+                              projectTypes: prev.projectTypes?.filter(
+                                (t) => t !== type,
+                              ),
+                            }))
+                          }
                           className="ml-1 hover:text-red-600"
                         >
                           <X className="w-3 h-3" />
@@ -563,14 +768,21 @@ export const RubricManagement = ({ user, authToken }: RubricManagementProps) => 
                 <Textarea
                   id="rubricDescription"
                   value={newRubric.description || ""}
-                  onChange={(e) => setNewRubric(prev => ({ ...prev, description: e.target.value }))}
+                  onChange={(e) =>
+                    setNewRubric((prev) => ({
+                      ...prev,
+                      description: e.target.value,
+                    }))
+                  }
                   placeholder="Describe the purpose and scope of this rubric"
                   rows={3}
                 />
               </div>
 
               <div>
-                <h3 className="text-lg font-semibold mb-4">Add Evaluation Criterion</h3>
+                <h3 className="text-lg font-semibold mb-4">
+                  Add Evaluation Criterion
+                </h3>
                 <div className="space-y-4 border rounded p-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
@@ -578,7 +790,12 @@ export const RubricManagement = ({ user, authToken }: RubricManagementProps) => 
                       <Input
                         id="criterionName"
                         value={newCriterion.name || ""}
-                        onChange={(e) => setNewCriterion(prev => ({ ...prev, name: e.target.value }))}
+                        onChange={(e) =>
+                          setNewCriterion((prev) => ({
+                            ...prev,
+                            name: e.target.value,
+                          }))
+                        }
                         placeholder="e.g., Technical Implementation"
                       />
                     </div>
@@ -588,7 +805,12 @@ export const RubricManagement = ({ user, authToken }: RubricManagementProps) => 
                         id="criterionWeight"
                         type="number"
                         value={newCriterion.weight || 10}
-                        onChange={(e) => setNewCriterion(prev => ({ ...prev, weight: parseInt(e.target.value) }))}
+                        onChange={(e) =>
+                          setNewCriterion((prev) => ({
+                            ...prev,
+                            weight: parseInt(e.target.value),
+                          }))
+                        }
                         min="1"
                         max="100"
                       />
@@ -600,7 +822,12 @@ export const RubricManagement = ({ user, authToken }: RubricManagementProps) => 
                     <Textarea
                       id="criterionDescription"
                       value={newCriterion.description || ""}
-                      onChange={(e) => setNewCriterion(prev => ({ ...prev, description: e.target.value }))}
+                      onChange={(e) =>
+                        setNewCriterion((prev) => ({
+                          ...prev,
+                          description: e.target.value,
+                        }))
+                      }
                       placeholder="Describe what this criterion evaluates"
                       rows={2}
                     />
@@ -611,9 +838,9 @@ export const RubricManagement = ({ user, authToken }: RubricManagementProps) => 
                     <Select
                       onValueChange={(value) => {
                         if (!newCriterion.ploIds?.includes(value)) {
-                          setNewCriterion(prev => ({
+                          setNewCriterion((prev) => ({
                             ...prev,
-                            ploIds: [...(prev.ploIds || []), value]
+                            ploIds: [...(prev.ploIds || []), value],
                           }));
                         }
                       }}
@@ -622,7 +849,7 @@ export const RubricManagement = ({ user, authToken }: RubricManagementProps) => 
                         <SelectValue placeholder="Link to PLOs" />
                       </SelectTrigger>
                       <SelectContent>
-                        {samplePLOs.map(plo => (
+                        {samplePLOs.map((plo) => (
                           <SelectItem key={plo.id} value={plo.id}>
                             {plo.code}: {plo.description}
                           </SelectItem>
@@ -630,17 +857,25 @@ export const RubricManagement = ({ user, authToken }: RubricManagementProps) => 
                       </SelectContent>
                     </Select>
                     <div className="flex flex-wrap gap-1 mt-2">
-                      {newCriterion.ploIds?.map(ploId => {
-                        const plo = samplePLOs.find(p => p.id === ploId);
+                      {newCriterion.ploIds?.map((ploId) => {
+                        const plo = samplePLOs.find((p) => p.id === ploId);
                         return (
-                          <Badge key={ploId} variant="secondary" className="flex items-center space-x-1">
+                          <Badge
+                            key={ploId}
+                            variant="secondary"
+                            className="flex items-center space-x-1"
+                          >
                             <span>{plo?.code}</span>
                             <button
                               type="button"
-                              onClick={() => setNewCriterion(prev => ({
-                                ...prev,
-                                ploIds: prev.ploIds?.filter(id => id !== ploId)
-                              }))}
+                              onClick={() =>
+                                setNewCriterion((prev) => ({
+                                  ...prev,
+                                  ploIds: prev.ploIds?.filter(
+                                    (id) => id !== ploId,
+                                  ),
+                                }))
+                              }
                               className="ml-1 hover:text-red-600"
                             >
                               <X className="w-3 h-3" />
@@ -660,9 +895,17 @@ export const RubricManagement = ({ user, authToken }: RubricManagementProps) => 
                             <Input
                               value={level.name}
                               onChange={(e) => {
-                                const newLevels = [...(newCriterion.levels || [])];
-                                newLevels[index] = { ...level, name: e.target.value };
-                                setNewCriterion(prev => ({ ...prev, levels: newLevels }));
+                                const newLevels = [
+                                  ...(newCriterion.levels || []),
+                                ];
+                                newLevels[index] = {
+                                  ...level,
+                                  name: e.target.value,
+                                };
+                                setNewCriterion((prev) => ({
+                                  ...prev,
+                                  levels: newLevels,
+                                }));
                               }}
                               placeholder="Level name"
                               className="text-sm"
@@ -671,9 +914,17 @@ export const RubricManagement = ({ user, authToken }: RubricManagementProps) => 
                               type="number"
                               value={level.points}
                               onChange={(e) => {
-                                const newLevels = [...(newCriterion.levels || [])];
-                                newLevels[index] = { ...level, points: parseInt(e.target.value) };
-                                setNewCriterion(prev => ({ ...prev, levels: newLevels }));
+                                const newLevels = [
+                                  ...(newCriterion.levels || []),
+                                ];
+                                newLevels[index] = {
+                                  ...level,
+                                  points: parseInt(e.target.value),
+                                };
+                                setNewCriterion((prev) => ({
+                                  ...prev,
+                                  levels: newLevels,
+                                }));
                               }}
                               className="w-16 text-sm ml-2"
                               min="0"
@@ -683,9 +934,17 @@ export const RubricManagement = ({ user, authToken }: RubricManagementProps) => 
                           <Textarea
                             value={level.description}
                             onChange={(e) => {
-                              const newLevels = [...(newCriterion.levels || [])];
-                              newLevels[index] = { ...level, description: e.target.value };
-                              setNewCriterion(prev => ({ ...prev, levels: newLevels }));
+                              const newLevels = [
+                                ...(newCriterion.levels || []),
+                              ];
+                              newLevels[index] = {
+                                ...level,
+                                description: e.target.value,
+                              };
+                              setNewCriterion((prev) => ({
+                                ...prev,
+                                levels: newLevels,
+                              }));
                             }}
                             placeholder="Level description"
                             rows={2}
@@ -706,7 +965,9 @@ export const RubricManagement = ({ user, authToken }: RubricManagementProps) => 
               {newRubric.criteria && newRubric.criteria.length > 0 && (
                 <div>
                   <h3 className="text-lg font-semibold mb-4">
-                    Current Criteria ({newRubric.criteria.reduce((sum, c) => sum + c.weight, 0)}% total weight)
+                    Current Criteria (
+                    {newRubric.criteria.reduce((sum, c) => sum + c.weight, 0)}%
+                    total weight)
                   </h3>
                   <div className="space-y-3">
                     {newRubric.criteria.map((criterion) => (
@@ -715,15 +976,27 @@ export const RubricManagement = ({ user, authToken }: RubricManagementProps) => 
                           <div className="flex justify-between items-start">
                             <div className="flex-1">
                               <div className="flex items-center space-x-2 mb-2">
-                                <h4 className="font-medium">{criterion.name}</h4>
-                                <Badge variant="outline">{criterion.weight}%</Badge>
+                                <h4 className="font-medium">
+                                  {criterion.name}
+                                </h4>
+                                <Badge variant="outline">
+                                  {criterion.weight}%
+                                </Badge>
                               </div>
-                              <p className="text-sm text-muted-foreground mb-2">{criterion.description}</p>
+                              <p className="text-sm text-muted-foreground mb-2">
+                                {criterion.description}
+                              </p>
                               <div className="flex flex-wrap gap-1">
-                                {criterion.ploIds.map(ploId => {
-                                  const plo = samplePLOs.find(p => p.id === ploId);
+                                {criterion.ploIds.map((ploId) => {
+                                  const plo = samplePLOs.find(
+                                    (p) => p.id === ploId,
+                                  );
                                   return (
-                                    <Badge key={ploId} variant="secondary" className="text-xs">
+                                    <Badge
+                                      key={ploId}
+                                      variant="secondary"
+                                      className="text-xs"
+                                    >
                                       {plo?.code}
                                     </Badge>
                                   );
@@ -733,10 +1006,14 @@ export const RubricManagement = ({ user, authToken }: RubricManagementProps) => 
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => setNewRubric(prev => ({
-                                ...prev,
-                                criteria: prev.criteria?.filter(c => c.id !== criterion.id)
-                              }))}
+                              onClick={() =>
+                                setNewRubric((prev) => ({
+                                  ...prev,
+                                  criteria: prev.criteria?.filter(
+                                    (c) => c.id !== criterion.id,
+                                  ),
+                                }))
+                              }
                               className="text-destructive hover:text-destructive"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -778,7 +1055,8 @@ export const RubricManagement = ({ user, authToken }: RubricManagementProps) => 
             <CardHeader>
               <CardTitle>Program Learning Outcomes (PLOs)</CardTitle>
               <p className="text-sm text-muted-foreground">
-                Reference guide for linking rubric criteria to curriculum outcomes
+                Reference guide for linking rubric criteria to curriculum
+                outcomes
               </p>
             </CardHeader>
             <CardContent>
@@ -787,10 +1065,14 @@ export const RubricManagement = ({ user, authToken }: RubricManagementProps) => 
                   <Card key={plo.id}>
                     <CardContent className="pt-4">
                       <div className="flex items-start space-x-4">
-                        <Badge variant="outline" className="mt-1">{plo.code}</Badge>
+                        <Badge variant="outline" className="mt-1">
+                          {plo.code}
+                        </Badge>
                         <div className="flex-1">
                           <p className="font-medium">{plo.description}</p>
-                          <Badge variant="secondary" className="mt-2">{plo.category}</Badge>
+                          <Badge variant="secondary" className="mt-2">
+                            {plo.category}
+                          </Badge>
                         </div>
                       </div>
                     </CardContent>
