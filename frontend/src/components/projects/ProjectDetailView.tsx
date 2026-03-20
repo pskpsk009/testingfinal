@@ -12,6 +12,13 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   ArrowLeft,
   Download,
   ExternalLink,
@@ -40,6 +47,7 @@ import {
   updateProjectStatus,
   downloadProjectFile,
 } from "@/services/projectApi";
+import { fetchRubrics, type RubricDto } from "@/services/rubricApi";
 
 interface User {
   id: string;
@@ -171,6 +179,16 @@ export const ProjectDetailView = ({
   const [selectedAction, setSelectedAction] = useState<string | null>(null);
   const [gradeSelection, setGradeSelection] = useState<string>("");
   const [newComment, setNewComment] = useState("");
+  const [isAssignRubricDialogOpen, setIsAssignRubricDialogOpen] = useState(false);
+  const [selectedRubricId, setSelectedRubricId] = useState<string>("");
+  const [assignedRubricMap, setAssignedRubricMap] = useState<Record<string, number>>(() => {
+    try {
+      const raw = localStorage.getItem("assignedRubricByProject");
+      return raw ? (JSON.parse(raw) as Record<string, number>) : {};
+    } catch {
+      return {};
+    }
+  });
   const queryClient = useQueryClient();
 
   // Find the correct project by ID
@@ -184,6 +202,60 @@ export const ProjectDetailView = ({
     project.status === "Under Review";
   const canCoordinatorSubmitFeedback =
     user.role === "coordinator" && !isArchiveView;
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("assignedRubricByProject", JSON.stringify(assignedRubricMap));
+    } catch {
+      // Ignore storage write failures.
+    }
+  }, [assignedRubricMap]);
+
+  const { data: rubricDtos = [], isLoading: isLoadingRubrics } = useQuery({
+    queryKey: ["rubrics", authToken],
+    queryFn: async () => {
+      if (!authToken) {
+        return [] as RubricDto[];
+      }
+      return fetchRubrics(authToken);
+    },
+    enabled: Boolean(authToken && user.role === "advisor"),
+  });
+
+  const activeRubrics = rubricDtos.filter((rubric) => rubric.is_active);
+  const assignedRubricId = assignedRubricMap[project.id.toString()];
+  const assignedRubric = activeRubrics.find((rubric) => rubric.id === assignedRubricId);
+
+  const handleOpenAssignRubricDialog = () => {
+    setSelectedRubricId(assignedRubricId ? String(assignedRubricId) : "");
+    setIsAssignRubricDialogOpen(true);
+  };
+
+  const handleAssignRubric = () => {
+    if (!selectedRubricId) {
+      toast({
+        title: "Select a rubric",
+        description: "Please choose a rubric before assigning.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setAssignedRubricMap((prev) => ({
+      ...prev,
+      [project.id.toString()]: Number(selectedRubricId),
+    }));
+
+    const rubricName =
+      activeRubrics.find((rubric) => String(rubric.id) === selectedRubricId)?.name ??
+      "Rubric";
+
+    setIsAssignRubricDialogOpen(false);
+    toast({
+      title: "Rubric assigned",
+      description: `${rubricName} has been assigned to this project.`,
+    });
+  };
 
   useEffect(() => {
     setGradeSelection(project.grade ?? "");
@@ -899,12 +971,26 @@ export const ProjectDetailView = ({
           {/* Project Details */}
           <Card>
             <CardHeader>
-              <CardTitle>Project Details</CardTitle>
+              <div className="flex items-center justify-between gap-3">
+                <CardTitle>Project Details</CardTitle>
+                {user.role === "advisor" && (
+                  <Button size="sm" variant="outline" onClick={handleOpenAssignRubricDialog}>
+                    Assign Rubric
+                  </Button>
+                )}
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center space-x-2">
                 <Badge variant="outline">{project.type}</Badge>
               </div>
+
+              {assignedRubric && (
+                <div className="text-sm">
+                  <p className="font-medium">Assigned Rubric</p>
+                  <p className="text-gray-600">{assignedRubric.name}</p>
+                </div>
+              )}
 
               <Separator />
 
@@ -1253,6 +1339,50 @@ export const ProjectDetailView = ({
           )}
         </div>
       </div>
+
+      <Dialog
+        open={isAssignRubricDialogOpen}
+        onOpenChange={setIsAssignRubricDialogOpen}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Assign Rubric</DialogTitle>
+            <DialogDescription>
+              Choose an active rubric for this project.
+            </DialogDescription>
+          </DialogHeader>
+
+          {isLoadingRubrics ? (
+            <p className="text-sm text-muted-foreground">Loading rubrics...</p>
+          ) : activeRubrics.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No active rubrics available. Create and activate a rubric first.
+            </p>
+          ) : (
+            <div className="space-y-4">
+              <Select
+                value={selectedRubricId}
+                onValueChange={setSelectedRubricId}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a rubric" />
+                </SelectTrigger>
+                <SelectContent>
+                  {activeRubrics.map((rubric) => (
+                    <SelectItem key={rubric.id} value={String(rubric.id)}>
+                      {rubric.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <div className="flex justify-end">
+                <Button onClick={handleAssignRubric}>Assign</Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
