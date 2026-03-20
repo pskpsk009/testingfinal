@@ -1,15 +1,48 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -49,7 +82,9 @@ const courseSchema = z.object({
   courseCode: z.string().min(1, "Course code is required"),
   title: z.string().min(1, "Course title is required"),
   description: z.string().optional(),
-  semester: z.enum(["", "1", "2"]).refine(val => val !== "", "Semester is required"),
+  semester: z
+    .enum(["", "1", "2"])
+    .refine((val) => val !== "", "Semester is required"),
   year: z.string().min(4, "Year must be at least 4 digits"),
   credits: z.string().min(1, "Credits are required"),
   instructor: z.string().min(1, "Instructor is required"),
@@ -58,7 +93,10 @@ const courseSchema = z.object({
 
 type CourseFormData = z.infer<typeof courseSchema>;
 
-export const CourseManagement = ({ user, authToken }: CourseManagementProps) => {
+export const CourseManagement = ({
+  user,
+  authToken,
+}: CourseManagementProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data: coursesData = [], isLoading } = useCourses(authToken);
@@ -72,19 +110,22 @@ export const CourseManagement = ({ user, authToken }: CourseManagementProps) => 
   const createMutation = useMutation({
     mutationFn: async (data: CourseFormData) => {
       if (!authToken) throw new Error("No auth token");
-      return createCourse({
-        courseCode: data.courseCode,
-        title: data.title,
-        description: data.description,
-        semester: data.semester,
-        year: data.year,
-        credits: parseInt(data.credits),
-        instructor: data.instructor,
-        advisorEmail: data.advisorEmail,
-      }, authToken);
+      return createCourse(
+        {
+          courseCode: data.courseCode,
+          title: data.title,
+          description: data.description,
+          semester: data.semester,
+          year: data.year,
+          credits: parseInt(data.credits),
+          instructor: data.instructor,
+          advisorEmail: data.advisorEmail,
+        },
+        authToken,
+      );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["courses"] });
+      queryClient.invalidateQueries({ queryKey: ["courses", authToken] });
       toast({
         title: "Course Created",
         description: "New course has been successfully created.",
@@ -121,8 +162,27 @@ export const CourseManagement = ({ user, authToken }: CourseManagementProps) => 
         authToken,
       );
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["courses"] });
+    onSuccess: (updatedCourse) => {
+      queryClient.setQueryData(["courses", authToken], (prev: any) => {
+        if (!Array.isArray(prev)) {
+          return prev;
+        }
+
+        return prev.map((course) =>
+          String(course.id) === String(updatedCourse.id)
+            ? {
+                ...course,
+                courseCode: updatedCourse.courseCode,
+                title: updatedCourse.title ?? course.title,
+                semester: updatedCourse.semester,
+                year: updatedCourse.year,
+                credits: updatedCourse.credits,
+                advisorEmail: updatedCourse.advisorEmail,
+              }
+            : course,
+        );
+      });
+      queryClient.invalidateQueries({ queryKey: ["courses", authToken] });
       toast({
         title: "Course Updated",
         description: "Course has been successfully updated.",
@@ -146,7 +206,7 @@ export const CourseManagement = ({ user, authToken }: CourseManagementProps) => 
       return deleteCourse(courseId, authToken);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["courses"] });
+      queryClient.invalidateQueries({ queryKey: ["courses", authToken] });
       toast({
         title: "Course Deleted",
         description: "Course has been successfully deleted.",
@@ -205,16 +265,19 @@ export const CourseManagement = ({ user, authToken }: CourseManagementProps) => 
 
   const getSemesterBadgeColor = (semester: string) => {
     switch (semester) {
-      case "1": return "bg-orange-100 text-orange-800";
-      case "2": return "bg-green-100 text-green-800";
-      default: return "bg-gray-100 text-gray-800";
+      case "1":
+        return "bg-orange-100 text-orange-800";
+      case "2":
+        return "bg-green-100 text-green-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
   };
 
-  const courses = coursesData.map(c => ({
+  const courses = coursesData.map((c) => ({
     id: c.id,
     courseCode: c.courseCode,
-    title: c.courseCode, // Using courseCode as title for now
+    title: c.title || c.courseCode,
     description: "",
     semester: c.semester as "1" | "2",
     year: c.year,
@@ -225,27 +288,33 @@ export const CourseManagement = ({ user, authToken }: CourseManagementProps) => 
     createdAt: "",
   }));
 
-  const filteredCourses = courses.filter(course => {
-    const matchesSearch = searchTerm === "" || 
+  const filteredCourses = courses.filter((course) => {
+    const matchesSearch =
+      searchTerm === "" ||
       course.courseCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
       course.title.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesSemester = semesterFilter === "all" || course.semester === semesterFilter;
+    const matchesSemester =
+      semesterFilter === "all" || course.semester === semesterFilter;
     const matchesYear = yearFilter === "all" || course.year === yearFilter;
     return matchesSearch && matchesSemester && matchesYear;
   });
 
-  const uniqueYears = [...new Set(courses.map(course => course.year))].sort((a, b) => b.localeCompare(a));
+  const uniqueYears = [...new Set(courses.map((course) => course.year))].sort(
+    (a, b) => b.localeCompare(a),
+  );
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Course Management</h1>
+          <h1 className="text-3xl font-bold text-gray-900">
+            Course Management
+          </h1>
         </div>
 
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
-            <Button 
+            <Button
               onClick={() => {
                 setEditingCourse(null);
                 form.reset({
@@ -267,14 +336,21 @@ export const CourseManagement = ({ user, authToken }: CourseManagementProps) => 
           </DialogTrigger>
           <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle>{editingCourse ? "Edit Course" : "Create New Course"}</DialogTitle>
+              <DialogTitle>
+                {editingCourse ? "Edit Course" : "Create New Course"}
+              </DialogTitle>
               <DialogDescription>
-                {editingCourse ? "Update course information" : "Add a new course for the academic semester"}
+                {editingCourse
+                  ? "Update course information"
+                  : "Add a new course for the academic semester"}
               </DialogDescription>
             </DialogHeader>
 
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <form
+                onSubmit={form.handleSubmit(onSubmit)}
+                className="space-y-4"
+              >
                 <FormField
                   control={form.control}
                   name="courseCode"
@@ -296,7 +372,10 @@ export const CourseManagement = ({ user, authToken }: CourseManagementProps) => 
                     <FormItem>
                       <FormLabel>Course Title</FormLabel>
                       <FormControl>
-                        <Input placeholder="e.g., Senior Project 1" {...field} />
+                        <Input
+                          placeholder="e.g., Senior Project 1"
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -310,7 +389,10 @@ export const CourseManagement = ({ user, authToken }: CourseManagementProps) => 
                     <FormItem>
                       <FormLabel>Description (Optional)</FormLabel>
                       <FormControl>
-                        <Textarea placeholder="Course description..." {...field} />
+                        <Textarea
+                          placeholder="Course description..."
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -324,7 +406,10 @@ export const CourseManagement = ({ user, authToken }: CourseManagementProps) => 
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Semester</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                        >
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select semester" />
@@ -392,7 +477,11 @@ export const CourseManagement = ({ user, authToken }: CourseManagementProps) => 
                     <FormItem>
                       <FormLabel>Advisor Email</FormLabel>
                       <FormControl>
-                        <Input type="email" placeholder="advisor@university.edu" {...field} />
+                        <Input
+                          type="email"
+                          placeholder="advisor@university.edu"
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -400,9 +489,9 @@ export const CourseManagement = ({ user, authToken }: CourseManagementProps) => 
                 />
 
                 <div className="flex justify-end space-x-2 pt-4">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
+                  <Button
+                    type="button"
+                    variant="outline"
                     onClick={() => {
                       setIsCreateDialogOpen(false);
                       setEditingCourse(null);
@@ -411,7 +500,12 @@ export const CourseManagement = ({ user, authToken }: CourseManagementProps) => 
                   >
                     Cancel
                   </Button>
-                  <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
+                  <Button
+                    type="submit"
+                    disabled={
+                      createMutation.isPending || updateMutation.isPending
+                    }
+                  >
                     {editingCourse ? "Update Course" : "Create Course"}
                   </Button>
                 </div>
@@ -438,7 +532,10 @@ export const CourseManagement = ({ user, authToken }: CourseManagementProps) => 
                 </div>
               </div>
               <div className="flex gap-2">
-                <Select value={semesterFilter} onValueChange={setSemesterFilter}>
+                <Select
+                  value={semesterFilter}
+                  onValueChange={setSemesterFilter}
+                >
                   <SelectTrigger className="w-40">
                     <SelectValue placeholder="Semester" />
                   </SelectTrigger>
@@ -454,8 +551,10 @@ export const CourseManagement = ({ user, authToken }: CourseManagementProps) => 
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Years</SelectItem>
-                    {uniqueYears.map(year => (
-                      <SelectItem key={year} value={year}>{year}</SelectItem>
+                    {uniqueYears.map((year) => (
+                      <SelectItem key={year} value={year}>
+                        {year}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -463,67 +562,69 @@ export const CourseManagement = ({ user, authToken }: CourseManagementProps) => 
             </div>
           </CardContent>
         </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="w-5 h-5" />
-                All Courses
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Course Code</TableHead>
-                    <TableHead>Title</TableHead>
-                    <TableHead>Semester</TableHead>
-                    <TableHead>Year</TableHead>
-                    <TableHead>Credits</TableHead>
-                    <TableHead>Instructor</TableHead>
-                    <TableHead>Advisor Email</TableHead>
-                    <TableHead>Actions</TableHead>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="w-5 h-5" />
+              All Courses
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Course Code</TableHead>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Semester</TableHead>
+                  <TableHead>Year</TableHead>
+                  <TableHead>Credits</TableHead>
+                  <TableHead>Instructor</TableHead>
+                  <TableHead>Advisor Email</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredCourses.map((course) => (
+                  <TableRow key={course.id}>
+                    <TableCell className="font-medium">
+                      {course.courseCode}
+                    </TableCell>
+                    <TableCell>{course.title}</TableCell>
+                    <TableCell>
+                      <Badge className={getSemesterBadgeColor(course.semester)}>
+                        {course.semester}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{course.year}</TableCell>
+                    <TableCell>{course.credits}</TableCell>
+                    <TableCell>{course.instructor}</TableCell>
+                    <TableCell>{course.advisorEmail}</TableCell>
+                    <TableCell>
+                      <div className="flex space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEdit(course)}
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDelete(course.id)}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredCourses.map((course) => (
-                    <TableRow key={course.id}>
-                      <TableCell className="font-medium">{course.courseCode}</TableCell>
-                      <TableCell>{course.title}</TableCell>
-                      <TableCell>
-                        <Badge className={getSemesterBadgeColor(course.semester)}>
-                          {course.semester}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{course.year}</TableCell>
-                      <TableCell>{course.credits}</TableCell>
-                      <TableCell>{course.instructor}</TableCell>
-                      <TableCell>{course.advisorEmail}</TableCell>
-                      <TableCell>
-                        <div className="flex space-x-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleEdit(course)}
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDelete(course.id)}
-                            className="text-red-600 hover:text-red-700"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </div>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
       </div>
+    </div>
   );
 };

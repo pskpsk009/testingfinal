@@ -16,9 +16,12 @@ const buildUrl = (path: string): string => {
 export interface CourseDto {
   id: string;
   courseCode: string;
+  title?: string;
   semester: string;
   year: string;
   credits: number;
+  instructor?: string;
+  description?: string;
   advisorEmail: string;
   advisorId: number;
   advisorName: string;
