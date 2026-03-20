@@ -3,7 +3,7 @@ import { AuthedRequest, verifyFirebaseAuth } from "../middleware/auth";
 import { validate } from "../middleware/validate";
 import { createCourseSchema } from "../middleware/schemas";
 import { getSupabaseAdminClient } from "../services/supabaseClient";
-import { findUserByEmail } from "../services/userService";
+import { findUserByEmail, findUserById } from "../services/userService";
 import {
   listProjectsByCourse,
   ProjectWithRelations,
@@ -144,13 +144,6 @@ coursesRouter.post(
 
     const advisor = advisorResponse.data;
 
-    if (advisor.role !== "advisor") {
-      res
-        .status(400)
-        .json({ error: "The provided email does not belong to an advisor." });
-      return;
-    }
-
     // Insert course
     const { data: course, error } = await supabase
       .from("course")
@@ -179,8 +172,9 @@ coursesRouter.post(
         year: course.year.toString(),
         credits: parseInt(course.credit),
         instructor: instructor,
-        advisorEmail: advisorEmail,
+        advisorEmail: advisor.email,
         advisorId: course.advisor_id,
+        advisorName: advisor.name,
       },
     });
   },
@@ -297,9 +291,9 @@ coursesRouter.put(
     }
 
     let nextAdvisorId = existingCourse.advisor_id;
+    let resolvedAdvisorName = "";
+    let resolvedAdvisorEmail = "";
 
-    // Preserve existing advisor assignment when incoming advisorEmail is invalid
-    // so that non-advisor historical data does not block unrelated course edits.
     if (typeof advisorEmail === "string" && advisorEmail.trim().length > 0) {
       const advisorResponse = await findUserByEmail(advisorEmail.trim());
       if (advisorResponse.error) {
@@ -307,8 +301,24 @@ coursesRouter.put(
         return;
       }
 
-      if (advisorResponse.data && advisorResponse.data.role === "advisor") {
-        nextAdvisorId = advisorResponse.data.id;
+      if (!advisorResponse.data) {
+        res.status(404).json({ error: "User not found with the provided email." });
+        return;
+      }
+
+      nextAdvisorId = advisorResponse.data.id;
+      resolvedAdvisorName = advisorResponse.data.name;
+      resolvedAdvisorEmail = advisorResponse.data.email;
+    } else {
+      const existingAdvisorResponse = await findUserById(existingCourse.advisor_id);
+      if (existingAdvisorResponse.error) {
+        res.status(500).json({ error: existingAdvisorResponse.error.message });
+        return;
+      }
+
+      if (existingAdvisorResponse.data) {
+        resolvedAdvisorName = existingAdvisorResponse.data.name;
+        resolvedAdvisorEmail = existingAdvisorResponse.data.email;
       }
     }
 
@@ -340,8 +350,9 @@ coursesRouter.put(
         year: course.year.toString(),
         credits: parseInt(course.credit),
         instructor,
-        advisorEmail,
+        advisorEmail: resolvedAdvisorEmail,
         advisorId: course.advisor_id,
+        advisorName: resolvedAdvisorName,
       },
     });
   },

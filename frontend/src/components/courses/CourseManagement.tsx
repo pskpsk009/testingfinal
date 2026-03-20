@@ -178,6 +178,7 @@ export const CourseManagement = ({
                 year: updatedCourse.year,
                 credits: updatedCourse.credits,
                 advisorEmail: updatedCourse.advisorEmail,
+                advisorName: updatedCourse.advisorName,
               }
             : course,
         );
