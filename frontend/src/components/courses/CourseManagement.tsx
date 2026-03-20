@@ -105,7 +105,6 @@ export const CourseManagement = ({
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [assigningCourse, setAssigningCourse] = useState<Course | null>(null);
-  const [assignAdvisorName, setAssignAdvisorName] = useState("");
   const [assignAdvisorEmail, setAssignAdvisorEmail] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [semesterFilter, setSemesterFilter] = useState("all");
@@ -233,12 +232,7 @@ export const CourseManagement = ({
       if (!assigningCourse)
         throw new Error("No course selected for assignment");
 
-      const trimmedName = assignAdvisorName.trim();
       const trimmedEmail = assignAdvisorEmail.trim();
-
-      if (!trimmedName) {
-        throw new Error("Advisor name is required.");
-      }
 
       if (!trimmedEmail) {
         throw new Error("Advisor email is required.");
@@ -253,7 +247,7 @@ export const CourseManagement = ({
           semester: assigningCourse.semester,
           year: assigningCourse.year,
           credits: assigningCourse.credits,
-          instructor: trimmedName,
+          instructor: assigningCourse.instructor || "TBD",
           advisorEmail: trimmedEmail,
         },
         authToken,
@@ -282,7 +276,6 @@ export const CourseManagement = ({
       });
       setIsAssignDialogOpen(false);
       setAssigningCourse(null);
-      setAssignAdvisorName("");
       setAssignAdvisorEmail("");
     },
     onError: (error: Error) => {
@@ -337,7 +330,6 @@ export const CourseManagement = ({
 
   const handleOpenAssign = (course: Course) => {
     setAssigningCourse(course);
-    setAssignAdvisorName("");
     setAssignAdvisorEmail("");
     setIsAssignDialogOpen(true);
   };
@@ -568,21 +560,11 @@ export const CourseManagement = ({
             <DialogHeader>
               <DialogTitle>Assign Advisor</DialogTitle>
               <DialogDescription>
-                Enter advisor name and email for this course.
+                Enter advisor email for this course.
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="assign-advisor-name">Advisor Name</Label>
-                <Input
-                  id="assign-advisor-name"
-                  value={assignAdvisorName}
-                  onChange={(e) => setAssignAdvisorName(e.target.value)}
-                  placeholder="Enter advisor name"
-                />
-              </div>
-
               <div className="space-y-2">
                 <Label htmlFor="assign-advisor-email">Advisor Email</Label>
                 <Input
@@ -601,7 +583,6 @@ export const CourseManagement = ({
                   onClick={() => {
                     setIsAssignDialogOpen(false);
                     setAssigningCourse(null);
-                    setAssignAdvisorName("");
                     setAssignAdvisorEmail("");
                   }}
                 >
