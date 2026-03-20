@@ -105,7 +105,14 @@ export const Dashboard = ({ user, authToken, onLogout }: DashboardProps) => {
       if (!projects) return [];
       return projects.map((p) => {
         const o = clientProjectOverrides[p.id?.toString?.() ?? ""];
-        return o ? { ...p, ...o } : p;
+        if (!o) {
+          return p;
+        }
+
+        // Always trust backend status to avoid stale local overrides showing
+        // outdated state (e.g., still "Under Review" after advisor rejected).
+        const { status: _ignoredStatus, ...safeOverride } = o;
+        return { ...p, ...safeOverride };
       });
     }, [projects, clientProjectOverrides]);
 
@@ -232,9 +239,11 @@ export const Dashboard = ({ user, authToken, onLogout }: DashboardProps) => {
       case "reports":
         return <ReportingDashboard user={user} />;
       case "rubrics":
-        return user.role === "advisor"
-          ? <RubricManagement user={user} authToken={authToken} />
-          : <RubricViewer user={user} authToken={authToken} />;
+        return user.role === "advisor" ? (
+          <RubricManagement user={user} authToken={authToken} />
+        ) : (
+          <RubricViewer user={user} authToken={authToken} />
+        );
       case "account-details":
         return <AccountDetails user={user} authToken={authToken} />;
       default:
