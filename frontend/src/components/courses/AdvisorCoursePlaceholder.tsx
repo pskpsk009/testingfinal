@@ -7,6 +7,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -32,7 +39,7 @@ import {
   Plus,
 } from "lucide-react";
 import { useCourses } from "@/hooks/use-courses";
-import { fetchCourseProjects } from "@/services/courseApi";
+import { fetchCourseProjects, fetchCourseRoster, type RosterEntryDto } from "@/services/courseApi";
 import { updateProjectStatus } from "@/services/projectApi";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -65,12 +72,24 @@ interface AdvisorCoursePlaceholderProps {
   onCreateRubric: () => void;
 }
 
-export const AdvisorCoursePlaceholder = ({ authToken, onViewProject, onCreateRubric }: AdvisorCoursePlaceholderProps) => {
+export const AdvisorCoursePlaceholder = ({
+  authToken,
+  onViewProject,
+  onCreateRubric,
+}: AdvisorCoursePlaceholderProps) => {
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [courseProjects, setCourseProjects] = useState<any[]>([]);
-  const [allCourseProjects, setAllCourseProjects] = useState<Record<string, any[]>>({});
-  const [projectFeedback, setProjectFeedback] = useState<Record<string, string>>({});
+  const [allCourseProjects, setAllCourseProjects] = useState<
+    Record<string, any[]>
+  >({});
+  const [projectFeedback, setProjectFeedback] = useState<
+    Record<string, string>
+  >({});
+  const [isStudentsDialogOpen, setIsStudentsDialogOpen] = useState(false);
+  const [studentsDialogCourse, setStudentsDialogCourse] = useState<AdvisorCourse | null>(null);
+  const [courseStudents, setCourseStudents] = useState<RosterEntryDto[]>([]);
+  const [isLoadingStudents, setIsLoadingStudents] = useState(false);
   const { data: coursesData = [], isLoading } = useCourses(authToken);
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -84,31 +103,32 @@ export const AdvisorCoursePlaceholder = ({ authToken, onViewProject, onCreateRub
     onSuccess: (data, variables) => {
       toast({
         title: "Project Approved",
-        description: "The project has been approved successfully and will appear in the archive.",
+        description:
+          "The project has been approved successfully and will appear in the archive.",
       });
       // Clear feedback for this project
-      setProjectFeedback(prev => {
+      setProjectFeedback((prev) => {
         const updated = { ...prev };
         delete updated[variables.projectId.toString()];
         return updated;
       });
       // Refetch course projects to update the list
       if (selectedCourseId && authToken) {
-        fetchCourseProjects(selectedCourseId, authToken)
-          .then(projects => {
-            setCourseProjects(projects);
-            setAllCourseProjects(prev => ({
-              ...prev,
-              [selectedCourseId]: projects
-            }));
-          });
+        fetchCourseProjects(selectedCourseId, authToken).then((projects) => {
+          setCourseProjects(projects);
+          setAllCourseProjects((prev) => ({
+            ...prev,
+            [selectedCourseId]: projects,
+          }));
+        });
       }
       queryClient.invalidateQueries({ queryKey: ["projects"] });
     },
     onError: (error) => {
       toast({
         title: "Approval Failed",
-        description: error instanceof Error ? error.message : "Failed to approve project",
+        description:
+          error instanceof Error ? error.message : "Failed to approve project",
         variant: "destructive",
       });
     },
@@ -127,28 +147,28 @@ export const AdvisorCoursePlaceholder = ({ authToken, onViewProject, onCreateRub
         variant: "destructive",
       });
       // Clear feedback for this project
-      setProjectFeedback(prev => {
+      setProjectFeedback((prev) => {
         const updated = { ...prev };
         delete updated[variables.projectId.toString()];
         return updated;
       });
       // Refetch course projects to update the list
       if (selectedCourseId && authToken) {
-        fetchCourseProjects(selectedCourseId, authToken)
-          .then(projects => {
-            setCourseProjects(projects);
-            setAllCourseProjects(prev => ({
-              ...prev,
-              [selectedCourseId]: projects
-            }));
-          });
+        fetchCourseProjects(selectedCourseId, authToken).then((projects) => {
+          setCourseProjects(projects);
+          setAllCourseProjects((prev) => ({
+            ...prev,
+            [selectedCourseId]: projects,
+          }));
+        });
       }
       queryClient.invalidateQueries({ queryKey: ["projects"] });
     },
     onError: (error) => {
       toast({
         title: "Deny Failed",
-        description: error instanceof Error ? error.message : "Failed to deny project",
+        description:
+          error instanceof Error ? error.message : "Failed to deny project",
         variant: "destructive",
       });
     },
@@ -163,24 +183,29 @@ export const AdvisorCoursePlaceholder = ({ authToken, onViewProject, onCreateRub
   };
 
   const handleFeedbackChange = (projectId: string, feedback: string) => {
-    setProjectFeedback(prev => ({
+    setProjectFeedback((prev) => ({
       ...prev,
-      [projectId]: feedback
+      [projectId]: feedback,
     }));
   };
 
   // Fetch projects for all courses to show counts
   useEffect(() => {
     if (coursesData.length > 0 && authToken) {
-      coursesData.forEach(course => {
+      coursesData.forEach((course) => {
         fetchCourseProjects(course.id, authToken)
-          .then(projects => {
-            setAllCourseProjects(prev => ({
+          .then((projects) => {
+            setAllCourseProjects((prev) => ({
               ...prev,
-              [course.id]: projects
+              [course.id]: projects,
             }));
           })
-          .catch(error => console.error(`Error fetching projects for course ${course.id}:`, error));
+          .catch((error) =>
+            console.error(
+              `Error fetching projects for course ${course.id}:`,
+              error,
+            ),
+          );
       });
     }
   }, [coursesData, authToken]);
@@ -189,16 +214,21 @@ export const AdvisorCoursePlaceholder = ({ authToken, onViewProject, onCreateRub
   useEffect(() => {
     if (selectedCourseId && authToken) {
       fetchCourseProjects(selectedCourseId, authToken)
-        .then(projects => setCourseProjects(projects))
-        .catch(error => console.error('Error fetching course projects:', error));
+        .then((projects) => setCourseProjects(projects))
+        .catch((error) =>
+          console.error("Error fetching course projects:", error),
+        );
     }
   }, [selectedCourseId, authToken]);
 
   const courses = useMemo<AdvisorCourse[]>(() => {
     // Convert database courses to advisor course format
-    return coursesData.map(course => {
-      const projects = selectedCourseId === course.id ? courseProjects : (allCourseProjects[course.id] || []);
-      
+    return coursesData.map((course) => {
+      const projects =
+        selectedCourseId === course.id
+          ? courseProjects
+          : allCourseProjects[course.id] || [];
+
       return {
         id: course.id,
         code: course.courseCode,
@@ -206,20 +236,29 @@ export const AdvisorCoursePlaceholder = ({ authToken, onViewProject, onCreateRub
         semester: course.semester,
         year: course.year,
         adviseeCount: (allCourseProjects[course.id] || []).length,
-        submissionsDue: (allCourseProjects[course.id] || []).filter((p: any) => p?.status === 'Under Review').length,
+        submissionsDue: (allCourseProjects[course.id] || []).filter(
+          (p: any) => p?.status === "Under Review",
+        ).length,
         lastUpdated: "Recently",
         status: "On Track" as const,
         projects: projects
           .filter((p: any) => p && p.id)
           .map((p: any) => ({
-            id: p.id?.toString() || '',
-            title: p.title || 'Untitled Project',
-            teamName: p.teamName || 'Team',
-            summary: p.description || '',
-            status: p.status || 'Under Review',
-            lastTouchpoint: p.submissionDate || new Date().toISOString().split('T')[0],
-            progress: p.status === 'Approved' ? 100 : p.status === 'Under Review' ? 50 : 0,
-            nextMilestone: p.status === 'Under Review' ? 'Awaiting review' : 'Completed',
+            id: p.id?.toString() || "",
+            title: p.title || "Untitled Project",
+            teamName: p.teamName || "Team",
+            summary: p.description || "",
+            status: p.status || "Under Review",
+            lastTouchpoint:
+              p.submissionDate || new Date().toISOString().split("T")[0],
+            progress:
+              p.status === "Approved"
+                ? 100
+                : p.status === "Under Review"
+                  ? 50
+                  : 0,
+            nextMilestone:
+              p.status === "Under Review" ? "Awaiting review" : "Completed",
           })),
       };
     });
@@ -246,6 +285,38 @@ export const AdvisorCoursePlaceholder = ({ authToken, onViewProject, onCreateRub
 
   const handleProjectAction = (projectId: string) => {
     onViewProject(projectId);
+  };
+
+  const handleViewStudents = async (course: AdvisorCourse) => {
+    if (!authToken) {
+      toast({
+        title: "Not authenticated",
+        description: "Please log in again to view students.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setStudentsDialogCourse(course);
+    setIsStudentsDialogOpen(true);
+    setIsLoadingStudents(true);
+
+    try {
+      const roster = await fetchCourseRoster(course.id, authToken);
+      setCourseStudents(roster);
+    } catch (error) {
+      toast({
+        title: "Failed to load students",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Could not load student roster.",
+        variant: "destructive",
+      });
+      setCourseStudents([]);
+    } finally {
+      setIsLoadingStudents(false);
+    }
   };
 
   if (selectedCourse) {
@@ -338,41 +409,49 @@ export const AdvisorCoursePlaceholder = ({ authToken, onViewProject, onCreateRub
                     <p>Last touchpoint: {project.lastTouchpoint}</p>
                     <p>Next milestone: {project.nextMilestone}</p>
                   </div>
-                  
-                  {project.status !== "Approved" && project.status !== "Rejected" && (
-                    <div className="space-y-4 pt-4 border-t">
-                      <div>
-                        <h4 className="text-base font-semibold mb-2">Submit Feedback</h4>
-                        <p className="text-sm text-muted-foreground mb-3">Your Feedback</p>
-                        <Textarea
-                          placeholder="Share your thoughts about the project..."
-                          value={projectFeedback[project.id] || ""}
-                          onChange={(e) => handleFeedbackChange(project.id, e.target.value)}
-                          className="min-h-[120px] resize-none"
-                        />
+
+                  {project.status !== "Approved" &&
+                    project.status !== "Rejected" && (
+                      <div className="space-y-4 pt-4 border-t">
+                        <div>
+                          <h4 className="text-base font-semibold mb-2">
+                            Submit Feedback
+                          </h4>
+                          <p className="text-sm text-muted-foreground mb-3">
+                            Your Feedback
+                          </p>
+                          <Textarea
+                            placeholder="Share your thoughts about the project..."
+                            value={projectFeedback[project.id] || ""}
+                            onChange={(e) =>
+                              handleFeedbackChange(project.id, e.target.value)
+                            }
+                            className="min-h-[120px] resize-none"
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <Button
+                            className="w-full bg-red-500 hover:bg-red-600 text-white"
+                            onClick={() => handleDenyProject(project.id)}
+                            disabled={denyMutation.isPending}
+                          >
+                            <XCircle className="mr-2 h-5 w-5" />
+                            Deny
+                          </Button>
+                          <Button
+                            className="w-full bg-green-500 hover:bg-green-600 text-white"
+                            onClick={() => handleApproveProject(project.id)}
+                            disabled={approveMutation.isPending}
+                          >
+                            <CheckCircle className="mr-2 h-5 w-5" />
+                            Approved
+                          </Button>
+                        </div>
                       </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <Button
-                          className="w-full bg-red-500 hover:bg-red-600 text-white"
-                          onClick={() => handleDenyProject(project.id)}
-                          disabled={denyMutation.isPending}
-                        >
-                          <XCircle className="mr-2 h-5 w-5" />
-                          Deny
-                        </Button>
-                        <Button
-                          className="w-full bg-green-500 hover:bg-green-600 text-white"
-                          onClick={() => handleApproveProject(project.id)}
-                          disabled={approveMutation.isPending}
-                        >
-                          <CheckCircle className="mr-2 h-5 w-5" />
-                          Approved
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {(project.status === "Approved" || project.status === "Rejected") && (
+                    )}
+
+                  {(project.status === "Approved" ||
+                    project.status === "Rejected") && (
                     <div className="pt-4 border-t">
                       <Button
                         size="sm"
@@ -468,13 +547,22 @@ export const AdvisorCoursePlaceholder = ({ authToken, onViewProject, onCreateRub
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => handleCourseSelect(course.id)}
-                    >
-                      View projects <ChevronRight className="ml-1 h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center justify-end gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleViewStudents(course)}
+                      >
+                        View students
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleCourseSelect(course.id)}
+                      >
+                        View projects <ChevronRight className="ml-1 h-4 w-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -482,6 +570,52 @@ export const AdvisorCoursePlaceholder = ({ authToken, onViewProject, onCreateRub
           </Table>
         </CardContent>
       </Card>
+
+      <Dialog open={isStudentsDialogOpen} onOpenChange={setIsStudentsDialogOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>
+              Students{studentsDialogCourse ? ` - ${studentsDialogCourse.code}` : ""}
+            </DialogTitle>
+            <DialogDescription>
+              Students uploaded via CSV for this course.
+            </DialogDescription>
+          </DialogHeader>
+
+          {isLoadingStudents ? (
+            <div className="py-8 text-center text-sm text-muted-foreground">
+              Loading student roster...
+            </div>
+          ) : courseStudents.length === 0 ? (
+            <div className="py-8 text-center text-sm text-muted-foreground">
+              No students uploaded for this course yet.
+            </div>
+          ) : (
+            <div className="max-h-[420px] overflow-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Student ID</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Year</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {courseStudents.map((student) => (
+                    <TableRow key={student.id}>
+                      <TableCell>{student.student_id}</TableCell>
+                      <TableCell>{student.name}</TableCell>
+                      <TableCell>{student.email}</TableCell>
+                      <TableCell>{student.year || "-"}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
