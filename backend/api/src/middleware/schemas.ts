@@ -9,8 +9,19 @@ export const createCourseSchema = z.object({
   semester: z.string().min(1, "semester is required").trim(),
   year: z.union([z.string(), z.number()]).transform((v) => String(v)),
   credits: z.union([z.string(), z.number()]).transform((v) => String(v)),
-  instructor: z.string().min(1, "instructor is required").trim(),
-  advisorEmail: z.string().email("advisorEmail must be a valid email"),
+  instructor: z.string().trim().optional().default(""),
+  advisorEmail: z
+    .string()
+    .trim()
+    .optional()
+    .refine(
+      (value) =>
+        value === undefined ||
+        value.length === 0 ||
+        /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value),
+      "advisorEmail must be a valid email",
+    )
+    .default(""),
 });
 
 // ── Profile schemas ──────────────────────────────────────────────────────

@@ -132,17 +132,26 @@ coursesRouter.post(
 
     const supabase = getSupabaseAdminClient();
 
-    // Find advisor by email
-    const advisorResponse = await findUserByEmail(advisorEmail);
+    const normalizedAdvisorEmail =
+      typeof advisorEmail === "string" ? advisorEmail.trim() : "";
+    let advisorId: number | null = null;
+    let resolvedAdvisorName = "";
+    let resolvedAdvisorEmail = "";
 
-    if (advisorResponse.error || !advisorResponse.data) {
-      res
-        .status(404)
-        .json({ error: "Advisor not found with the provided email." });
-      return;
+    if (normalizedAdvisorEmail.length > 0) {
+      const advisorResponse = await findUserByEmail(normalizedAdvisorEmail);
+
+      if (advisorResponse.error || !advisorResponse.data) {
+        res
+          .status(404)
+          .json({ error: "Advisor not found with the provided email." });
+        return;
+      }
+
+      advisorId = advisorResponse.data.id;
+      resolvedAdvisorName = advisorResponse.data.name;
+      resolvedAdvisorEmail = advisorResponse.data.email;
     }
-
-    const advisor = advisorResponse.data;
 
     // Insert course
     const { data: course, error } = await supabase
@@ -152,7 +161,7 @@ coursesRouter.post(
         semester: semester,
         year: parseInt(year),
         credit: credits.toString(),
-        advisor_id: advisor.id,
+        advisor_id: advisorId,
       })
       .select()
       .single();
@@ -171,10 +180,10 @@ coursesRouter.post(
         semester: course.semester,
         year: course.year.toString(),
         credits: parseInt(course.credit),
-        instructor: instructor,
-        advisorEmail: advisor.email,
+        instructor: resolvedAdvisorName || instructor || "",
+        advisorEmail: resolvedAdvisorEmail,
         advisorId: course.advisor_id,
-        advisorName: advisor.name,
+        advisorName: resolvedAdvisorName,
       },
     });
   },
@@ -302,7 +311,9 @@ coursesRouter.put(
       }
 
       if (!advisorResponse.data) {
-        res.status(404).json({ error: "User not found with the provided email." });
+        res
+          .status(404)
+          .json({ error: "User not found with the provided email." });
         return;
       }
 
@@ -310,7 +321,9 @@ coursesRouter.put(
       resolvedAdvisorName = advisorResponse.data.name;
       resolvedAdvisorEmail = advisorResponse.data.email;
     } else {
-      const existingAdvisorResponse = await findUserById(existingCourse.advisor_id);
+      const existingAdvisorResponse = await findUserById(
+        existingCourse.advisor_id,
+      );
       if (existingAdvisorResponse.error) {
         res.status(500).json({ error: existingAdvisorResponse.error.message });
         return;

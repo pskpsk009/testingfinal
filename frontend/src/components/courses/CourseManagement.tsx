@@ -87,8 +87,8 @@ const courseSchema = z.object({
     .refine((val) => val !== "", "Semester is required"),
   year: z.string().min(4, "Year must be at least 4 digits"),
   credits: z.string().min(1, "Credits are required"),
-  instructor: z.string().min(1, "Instructor is required"),
-  advisorEmail: z.string().email("Valid advisor email is required"),
+  instructor: z.string().optional(),
+  advisorEmail: z.string().optional(),
 });
 
 type CourseFormData = z.infer<typeof courseSchema>;
@@ -121,8 +121,8 @@ export const CourseManagement = ({
           semester: data.semester,
           year: data.year,
           credits: parseInt(data.credits),
-          instructor: data.instructor,
-          advisorEmail: data.advisorEmail,
+          instructor: data.instructor || "",
+          advisorEmail: data.advisorEmail || "",
         },
         authToken,
       );
@@ -296,8 +296,8 @@ export const CourseManagement = ({
       semester: "" as any,
       year: "",
       credits: "",
-      instructor: user.name || "",
-      advisorEmail: user.email || "",
+      instructor: "",
+      advisorEmail: "",
     },
   });
 
@@ -399,8 +399,8 @@ export const CourseManagement = ({
                   semester: "" as any,
                   year: "",
                   credits: "",
-                  instructor: user.name || "",
-                  advisorEmail: user.email || "",
+                  instructor: "",
+                  advisorEmail: "",
                 });
               }}
               className="bg-blue-600 hover:bg-blue-700"
@@ -684,7 +684,7 @@ export const CourseManagement = ({
                     <TableCell>{course.year}</TableCell>
                     <TableCell>{course.credits}</TableCell>
                     <TableCell>{course.instructor}</TableCell>
-                    <TableCell>{course.advisorEmail}</TableCell>
+                    <TableCell>{course.advisorEmail || "Not Assigned"}</TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
                         <Button

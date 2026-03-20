@@ -151,7 +151,7 @@ export const CourseManagement = ({ user }: CourseManagementProps) => {
       year: data.year,
       credits: parseInt(data.credits),
       instructor: data.instructor,
-      advisorEmail: editingCourse ? editingCourse.advisorEmail : user.email,
+      advisorEmail: editingCourse ? editingCourse.advisorEmail : "",
       enrollmentCount: editingCourse ? editingCourse.enrollmentCount : 0,
       createdAt: editingCourse
         ? editingCourse.createdAt
@@ -581,7 +581,7 @@ export const CourseManagement = ({ user }: CourseManagementProps) => {
                     <TableCell>{course.year}</TableCell>
                     <TableCell>{course.credits}</TableCell>
                     <TableCell>{course.instructor}</TableCell>
-                    <TableCell>{course.advisorEmail}</TableCell>
+                    <TableCell>{course.advisorEmail || "Not Assigned"}</TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
                         <Button
