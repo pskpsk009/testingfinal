@@ -1,3 +1,11 @@
+# Legacy Frontend Notice
+
+This folder is a legacy frontend copy.
+
+- Main frontend is `frontend/`
+- New feature work should go to `frontend/`
+- Deploy frontend from `frontend/` unless explicitly required otherwise
+
 # Welcome to your Lovable project
 
 ## Project info

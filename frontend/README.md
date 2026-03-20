@@ -1,5 +1,12 @@
 # Welcome to your Lovable project
 
+## Canonical Frontend Notice
+
+This is the main frontend application for this repository.
+
+- Use this folder for new UI features and fixes
+- Set Render frontend Root Directory to `frontend`
+
 ## Project info
 
 **URL**: https://lovable.dev/projects/bc87b6e7-4843-4428-ba5c-e8302c6f3e9d
