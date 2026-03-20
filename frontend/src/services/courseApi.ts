@@ -35,6 +35,8 @@ export interface CreateCoursePayload {
   advisorEmail: string;
 }
 
+export type UpdateCoursePayload = CreateCoursePayload;
+
 interface CoursesResponseBody {
   courses?: CourseDto[];
 }
@@ -89,6 +91,29 @@ export const createCourse = async (
 ): Promise<CourseDto> => {
   const response = await fetch(buildUrl("/courses"), {
     method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const body = await handleJsonResponse<CourseResponseBody>(response);
+
+  if (!body?.course) {
+    throw new Error("Course payload missing in response.");
+  }
+
+  return body.course;
+};
+
+export const updateCourse = async (
+  courseId: string,
+  payload: UpdateCoursePayload,
+  token: string,
+): Promise<CourseDto> => {
+  const response = await fetch(buildUrl(`/courses/${courseId}`), {
+    method: "PUT",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,

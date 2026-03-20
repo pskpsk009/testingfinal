@@ -16,7 +16,7 @@ import { z } from "zod";
 import { Plus, Edit, Trash2, Users, Calendar, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useCourses } from "@/hooks/use-courses";
-import { createCourse, deleteCourse } from "@/services/courseApi";
+import { createCourse, deleteCourse, updateCourse } from "@/services/courseApi";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 interface User {
@@ -101,6 +101,45 @@ export const CourseManagement = ({ user, authToken }: CourseManagementProps) => 
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: async (data: CourseFormData) => {
+      if (!authToken) throw new Error("No auth token");
+      if (!editingCourse) throw new Error("No course selected for update");
+
+      return updateCourse(
+        editingCourse.id,
+        {
+          courseCode: data.courseCode,
+          title: data.title,
+          description: data.description,
+          semester: data.semester,
+          year: data.year,
+          credits: parseInt(data.credits),
+          instructor: data.instructor,
+          advisorEmail: data.advisorEmail,
+        },
+        authToken,
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["courses"] });
+      toast({
+        title: "Course Updated",
+        description: "Course has been successfully updated.",
+      });
+      setIsCreateDialogOpen(false);
+      setEditingCourse(null);
+      form.reset();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const deleteMutation = useMutation({
     mutationFn: async (courseId: string) => {
       if (!authToken) throw new Error("No auth token");
@@ -138,7 +177,26 @@ export const CourseManagement = ({ user, authToken }: CourseManagementProps) => 
   });
 
   const onSubmit = (data: CourseFormData) => {
+    if (editingCourse) {
+      updateMutation.mutate(data);
+      return;
+    }
     createMutation.mutate(data);
+  };
+
+  const handleEdit = (course: Course) => {
+    setEditingCourse(course);
+    form.reset({
+      courseCode: course.courseCode,
+      title: course.title,
+      description: course.description,
+      semester: course.semester,
+      year: course.year,
+      credits: String(course.credits),
+      instructor: course.instructor,
+      advisorEmail: course.advisorEmail,
+    });
+    setIsCreateDialogOpen(true);
   };
 
   const handleDelete = (courseId: string) => {
@@ -266,7 +324,7 @@ export const CourseManagement = ({ user, authToken }: CourseManagementProps) => 
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Semester</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select semester" />
@@ -353,7 +411,7 @@ export const CourseManagement = ({ user, authToken }: CourseManagementProps) => 
                   >
                     Cancel
                   </Button>
-                  <Button type="submit">
+                  <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
                     {editingCourse ? "Update Course" : "Create Course"}
                   </Button>
                 </div>

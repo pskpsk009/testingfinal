@@ -246,6 +246,93 @@ coursesRouter.get(
   },
 );
 
+// Update a course (coordinator only)
+coursesRouter.put(
+  "/:courseId",
+  verifyFirebaseAuth,
+  validate(createCourseSchema),
+  async (req: AuthedRequest, res: Response) => {
+    const role = req.user?.role;
+
+    if (role !== "coordinator") {
+      res.status(403).json({ error: "Only coordinators can update courses." });
+      return;
+    }
+
+    const { courseId } = req.params;
+    const parsedCourseId = parseInt(courseId);
+
+    if (Number.isNaN(parsedCourseId)) {
+      res.status(400).json({ error: "Invalid courseId." });
+      return;
+    }
+
+    const {
+      courseCode,
+      title,
+      description,
+      semester,
+      year,
+      credits,
+      instructor,
+      advisorEmail,
+    } = req.body;
+
+    const supabase = getSupabaseAdminClient();
+
+    const advisorResponse = await findUserByEmail(advisorEmail);
+
+    if (advisorResponse.error || !advisorResponse.data) {
+      res
+        .status(404)
+        .json({ error: "Advisor not found with the provided email." });
+      return;
+    }
+
+    const advisor = advisorResponse.data;
+
+    if (advisor.role !== "advisor") {
+      res
+        .status(400)
+        .json({ error: "The provided email does not belong to an advisor." });
+      return;
+    }
+
+    const { data: course, error } = await supabase
+      .from("course")
+      .update({
+        course_code: courseCode,
+        semester,
+        year: parseInt(year),
+        credit: credits.toString(),
+        advisor_id: advisor.id,
+      })
+      .eq("id", parsedCourseId)
+      .select()
+      .single();
+
+    if (error) {
+      res.status(500).json({ error: error.message });
+      return;
+    }
+
+    res.json({
+      course: {
+        id: course.id,
+        courseCode: course.course_code,
+        title,
+        description: description || "",
+        semester: course.semester,
+        year: course.year.toString(),
+        credits: parseInt(course.credit),
+        instructor,
+        advisorEmail,
+        advisorId: course.advisor_id,
+      },
+    });
+  },
+);
+
 // Delete a course (coordinator only)
 coursesRouter.delete(
   "/:courseId",
