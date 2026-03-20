@@ -352,6 +352,12 @@ const formatProjectResponse = (record: ProjectWithRelations) => {
 
   const metadataGrade =
     typeof parsedMetadata.grade === "string" ? parsedMetadata.grade : null;
+  const metadataRubricId =
+    typeof parsedMetadata.rubricId === "number"
+      ? parsedMetadata.rubricId
+      : typeof parsedMetadata.rubricId === "string"
+        ? Number(parsedMetadata.rubricId)
+        : null;
 
   const semesterLabel = project.semester === "2" ? "Semester 2" : "Semester 1";
 
@@ -391,6 +397,10 @@ const formatProjectResponse = (record: ProjectWithRelations) => {
         : project.end_date,
     impact: "Medium",
     grade: metadataGrade ?? project.grade ?? null,
+    rubricId:
+      metadataRubricId && Number.isFinite(metadataRubricId)
+        ? metadataRubricId
+        : null,
     feedback: {
       advisor: project.feedback_advisor,
       coordinator: project.feedback_coordinator,
@@ -926,6 +936,129 @@ projectsRouter.patch(
         projectId: numericProjectId,
         message: refreshedProject.error.message,
       });
+      res.status(500).json({ error: refreshedProject.error.message });
+      return;
+    }
+
+    const [project] = refreshedProject.data ?? [];
+
+    res.json({ project: project ? formatProjectResponse(project) : null });
+  },
+);
+
+projectsRouter.patch(
+  "/:projectId/rubric",
+  verifyFirebaseAuth,
+  async (req: AuthedRequest, res: Response) => {
+    const role = req.user?.role;
+    const requesterEmail = req.user?.email;
+    const { projectId } = req.params;
+
+    if (role !== "advisor") {
+      res.status(403).json({ error: "Only advisors can assign rubrics." });
+      return;
+    }
+
+    if (!requesterEmail) {
+      res
+        .status(400)
+        .json({ error: "Email address missing from authentication token." });
+      return;
+    }
+
+    const numericProjectId = Number(projectId);
+
+    if (!Number.isFinite(numericProjectId) || numericProjectId <= 0) {
+      res.status(400).json({ error: "Invalid project identifier." });
+      return;
+    }
+
+    const rubricId =
+      typeof req.body?.rubricId === "number"
+        ? req.body.rubricId
+        : typeof req.body?.rubricId === "string"
+          ? Number(req.body.rubricId)
+          : NaN;
+
+    if (!Number.isFinite(rubricId) || rubricId <= 0) {
+      res.status(400).json({ error: "Valid rubricId is required." });
+      return;
+    }
+
+    const advisorLookup = await findUserByEmail(requesterEmail);
+
+    if (advisorLookup.error) {
+      res.status(500).json({ error: advisorLookup.error.message });
+      return;
+    }
+
+    const advisorRecord = advisorLookup.data;
+
+    if (!advisorRecord) {
+      res.status(404).json({ error: "Advisor record not found." });
+      return;
+    }
+
+    const projectResult = await getProjectById(numericProjectId);
+
+    if (projectResult.error) {
+      res.status(500).json({ error: projectResult.error.message });
+      return;
+    }
+
+    const projectRecord = projectResult.data?.[0];
+
+    if (!projectRecord) {
+      res.status(404).json({ error: "Project not found." });
+      return;
+    }
+
+    if (projectRecord.project.advisor_id !== advisorRecord.id) {
+      res.status(403).json({
+        error: "You are not assigned as the advisor for this project.",
+      });
+      return;
+    }
+
+    const supabase = getSupabaseAdminClient();
+    const { data: rubric, error: rubricError } = await supabase
+      .from("rubric")
+      .select("id, is_active")
+      .eq("id", rubricId)
+      .maybeSingle();
+
+    if (rubricError) {
+      res.status(500).json({ error: rubricError.message });
+      return;
+    }
+
+    if (!rubric) {
+      res.status(404).json({ error: "Rubric not found." });
+      return;
+    }
+
+    if (!rubric.is_active) {
+      res.status(400).json({ error: "Only active rubrics can be assigned." });
+      return;
+    }
+
+    const updatedMetadata: ProjectMetadata = {
+      ...(projectRecord.metadata ?? {}),
+      rubricId,
+    };
+
+    const updateResult = await updateProjectRecord(numericProjectId, {
+      metadata: updatedMetadata,
+    });
+
+    if (updateResult.error) {
+      res.status(500).json({ error: updateResult.error.message });
+      return;
+    }
+
+    const refreshedProject = await getProjectById(numericProjectId);
+
+    if (refreshedProject.error) {
       res.status(500).json({ error: refreshedProject.error.message });
       return;
     }

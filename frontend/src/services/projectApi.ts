@@ -65,6 +65,7 @@ export interface ProjectDto {
   completionDate: string | null;
   impact: string;
   grade?: string | null;
+  rubricId?: number | null;
   feedback?: {
     advisor?: string | null;
     coordinator?: string | null;
@@ -263,6 +264,33 @@ export const updateProjectStatus = async (
       Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({ status }),
+  });
+
+  const body = await handleJsonResponse<ProjectResponseBody>(response);
+
+  if (!body?.project) {
+    throw new ApiError(
+      "Project payload missing in response.",
+      response.status,
+      body,
+    );
+  }
+
+  return body.project;
+};
+
+export const assignProjectRubric = async (
+  projectId: number,
+  rubricId: number,
+  token: string,
+): Promise<ProjectDto> => {
+  const response = await fetch(buildUrl(`/projects/${projectId}/rubric`), {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ rubricId }),
   });
 
   const body = await handleJsonResponse<ProjectResponseBody>(response);

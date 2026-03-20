@@ -42,6 +42,7 @@ import {
 } from "@/components/ui/select";
 import type { ProjectDto, ProjectStatus } from "@/services/projectApi";
 import {
+  assignProjectRubric,
   updateProjectGrade,
   updateProjectFeedback,
   updateProjectStatus,
@@ -162,6 +163,7 @@ const mockProject: ExtendedProject = {
     status: "approved",
   },
   grade: "A",
+  rubricId: null,
 };
 
 export const ProjectDetailView = ({
@@ -181,14 +183,6 @@ export const ProjectDetailView = ({
   const [newComment, setNewComment] = useState("");
   const [isAssignRubricDialogOpen, setIsAssignRubricDialogOpen] = useState(false);
   const [selectedRubricId, setSelectedRubricId] = useState<string>("");
-  const [assignedRubricMap, setAssignedRubricMap] = useState<Record<string, number>>(() => {
-    try {
-      const raw = localStorage.getItem("assignedRubricByProject");
-      return raw ? (JSON.parse(raw) as Record<string, number>) : {};
-    } catch {
-      return {};
-    }
-  });
   const queryClient = useQueryClient();
 
   // Find the correct project by ID
@@ -203,14 +197,6 @@ export const ProjectDetailView = ({
   const canCoordinatorSubmitFeedback =
     user.role === "coordinator" && !isArchiveView;
 
-  useEffect(() => {
-    try {
-      localStorage.setItem("assignedRubricByProject", JSON.stringify(assignedRubricMap));
-    } catch {
-      // Ignore storage write failures.
-    }
-  }, [assignedRubricMap]);
-
   const { data: rubricDtos = [], isLoading: isLoadingRubrics } = useQuery({
     queryKey: ["rubrics", authToken],
     queryFn: async () => {
@@ -223,8 +209,69 @@ export const ProjectDetailView = ({
   });
 
   const activeRubrics = rubricDtos.filter((rubric) => rubric.is_active);
-  const assignedRubricId = assignedRubricMap[project.id.toString()];
+  const assignedRubricId =
+    typeof project.rubricId === "number" ? project.rubricId : null;
   const assignedRubric = activeRubrics.find((rubric) => rubric.id === assignedRubricId);
+
+  const assignRubricMutation = useMutation({
+    mutationFn: async (rubricId: number) => {
+      if (!authToken) {
+        throw new Error("Missing authentication token.");
+      }
+
+      return assignProjectRubric(project.id, rubricId, authToken);
+    },
+    onSuccess: (updatedProject) => {
+      queryClient.setQueryData<ProjectDto[] | undefined>(
+        ["projects", authToken],
+        (existing) => {
+          if (!existing) {
+            return existing;
+          }
+
+          return existing.map((candidate) =>
+            candidate.id === updatedProject.id
+              ? { ...candidate, rubricId: updatedProject.rubricId ?? null }
+              : candidate,
+          );
+        },
+      );
+
+      if (projects && onProjectUpdate) {
+        const updatedList = projects.map((candidate) =>
+          candidate.id === updatedProject.id
+            ? { ...candidate, rubricId: updatedProject.rubricId ?? null }
+            : candidate,
+        );
+        onProjectUpdate(updatedList);
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      onProjectRefresh?.();
+
+      const rubricName =
+        activeRubrics.find(
+          (rubric) => rubric.id === (updatedProject.rubricId ?? 0),
+        )?.name ?? "Rubric";
+
+      setIsAssignRubricDialogOpen(false);
+      toast({
+        title: "Rubric assigned",
+        description: `${rubricName} has been assigned to this project.`,
+      });
+    },
+    onError: (error: unknown) => {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Failed to assign rubric.";
+      toast({
+        title: "Assignment failed",
+        description: message,
+        variant: "destructive",
+      });
+    },
+  });
 
   const handleOpenAssignRubricDialog = () => {
     setSelectedRubricId(assignedRubricId ? String(assignedRubricId) : "");
@@ -241,20 +288,7 @@ export const ProjectDetailView = ({
       return;
     }
 
-    setAssignedRubricMap((prev) => ({
-      ...prev,
-      [project.id.toString()]: Number(selectedRubricId),
-    }));
-
-    const rubricName =
-      activeRubrics.find((rubric) => String(rubric.id) === selectedRubricId)?.name ??
-      "Rubric";
-
-    setIsAssignRubricDialogOpen(false);
-    toast({
-      title: "Rubric assigned",
-      description: `${rubricName} has been assigned to this project.`,
-    });
+    assignRubricMutation.mutate(Number(selectedRubricId));
   };
 
   useEffect(() => {
@@ -1377,7 +1411,12 @@ export const ProjectDetailView = ({
               </Select>
 
               <div className="flex justify-end">
-                <Button onClick={handleAssignRubric}>Assign</Button>
+                <Button
+                  onClick={handleAssignRubric}
+                  disabled={assignRubricMutation.isPending}
+                >
+                  Assign
+                </Button>
               </div>
             </div>
           )}

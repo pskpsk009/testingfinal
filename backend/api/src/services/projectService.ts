@@ -96,6 +96,7 @@ export interface ProjectMetadata {
     storagePath?: string;
   }>;
   grade?: string;
+  rubricId?: number;
   [key: string]: unknown;
 }
 
