@@ -232,8 +232,8 @@ export const CourseManagement = ({
       semester: "" as any,
       year: "",
       credits: "",
-      instructor: "",
-      advisorEmail: "",
+      instructor: user.name || "",
+      advisorEmail: user.email || "",
     },
   });
 
@@ -325,8 +325,8 @@ export const CourseManagement = ({
                   semester: "" as any,
                   year: "",
                   credits: "",
-                  instructor: "",
-                  advisorEmail: "",
+                  instructor: user.name || "",
+                  advisorEmail: user.email || "",
                 });
               }}
               className="bg-blue-600 hover:bg-blue-700"
@@ -441,48 +441,14 @@ export const CourseManagement = ({
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="credits"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Credits</FormLabel>
-                        <FormControl>
-                          <Input type="number" placeholder="3" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="instructor"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Instructor</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter name" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
                 <FormField
                   control={form.control}
-                  name="advisorEmail"
+                  name="credits"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Advisor Email</FormLabel>
+                      <FormLabel>Credits</FormLabel>
                       <FormControl>
-                        <Input
-                          type="email"
-                          placeholder="advisor@university.edu"
-                          {...field}
-                        />
+                        <Input type="number" placeholder="3" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
