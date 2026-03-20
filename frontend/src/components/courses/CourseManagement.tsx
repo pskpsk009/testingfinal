@@ -102,7 +102,11 @@ export const CourseManagement = ({
   const { data: coursesData = [], isLoading } = useCourses(authToken);
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
+  const [assigningCourse, setAssigningCourse] = useState<Course | null>(null);
+  const [assignAdvisorName, setAssignAdvisorName] = useState("");
+  const [assignAdvisorEmail, setAssignAdvisorEmail] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [semesterFilter, setSemesterFilter] = useState("all");
   const [yearFilter, setYearFilter] = useState("all");
@@ -223,6 +227,72 @@ export const CourseManagement = ({
     },
   });
 
+  const assignMutation = useMutation({
+    mutationFn: async () => {
+      if (!authToken) throw new Error("No auth token");
+      if (!assigningCourse) throw new Error("No course selected for assignment");
+
+      const trimmedName = assignAdvisorName.trim();
+      const trimmedEmail = assignAdvisorEmail.trim();
+
+      if (!trimmedName) {
+        throw new Error("Advisor name is required.");
+      }
+
+      if (!trimmedEmail) {
+        throw new Error("Advisor email is required.");
+      }
+
+      return updateCourse(
+        assigningCourse.id,
+        {
+          courseCode: assigningCourse.courseCode,
+          title: assigningCourse.title,
+          description: assigningCourse.description,
+          semester: assigningCourse.semester,
+          year: assigningCourse.year,
+          credits: assigningCourse.credits,
+          instructor: trimmedName,
+          advisorEmail: trimmedEmail,
+        },
+        authToken,
+      );
+    },
+    onSuccess: (updatedCourse) => {
+      queryClient.setQueryData(["courses", authToken], (prev: any) => {
+        if (!Array.isArray(prev)) {
+          return prev;
+        }
+
+        return prev.map((course) =>
+          String(course.id) === String(updatedCourse.id)
+            ? {
+                ...course,
+                advisorEmail: updatedCourse.advisorEmail,
+                advisorName: updatedCourse.advisorName,
+              }
+            : course,
+        );
+      });
+      queryClient.invalidateQueries({ queryKey: ["courses", authToken] });
+      toast({
+        title: "Advisor Assigned",
+        description: "Advisor information has been updated for this course.",
+      });
+      setIsAssignDialogOpen(false);
+      setAssigningCourse(null);
+      setAssignAdvisorName("");
+      setAssignAdvisorEmail("");
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const form = useForm<CourseFormData>({
     resolver: zodResolver(courseSchema),
     defaultValues: {
@@ -262,6 +332,17 @@ export const CourseManagement = ({
 
   const handleDelete = (courseId: string) => {
     deleteMutation.mutate(courseId);
+  };
+
+  const handleOpenAssign = (course: Course) => {
+    setAssigningCourse(course);
+    setAssignAdvisorName(course.instructor === "TBD" ? "" : course.instructor);
+    setAssignAdvisorEmail(course.advisorEmail);
+    setIsAssignDialogOpen(true);
+  };
+
+  const handleAssign = () => {
+    assignMutation.mutate();
   };
 
   const getSemesterBadgeColor = (semester: string) => {
@@ -480,6 +561,58 @@ export const CourseManagement = ({
             </Form>
           </DialogContent>
         </Dialog>
+
+        <Dialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Assign Advisor</DialogTitle>
+              <DialogDescription>
+                Enter advisor name and email for this course.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="assign-advisor-name">Advisor Name</Label>
+                <Input
+                  id="assign-advisor-name"
+                  value={assignAdvisorName}
+                  onChange={(e) => setAssignAdvisorName(e.target.value)}
+                  placeholder="Enter advisor name"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="assign-advisor-email">Advisor Email</Label>
+                <Input
+                  id="assign-advisor-email"
+                  type="email"
+                  value={assignAdvisorEmail}
+                  onChange={(e) => setAssignAdvisorEmail(e.target.value)}
+                  placeholder="advisor@university.edu"
+                />
+              </div>
+
+              <div className="flex justify-end space-x-2 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setIsAssignDialogOpen(false);
+                    setAssigningCourse(null);
+                    setAssignAdvisorName("");
+                    setAssignAdvisorEmail("");
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button type="button" onClick={handleAssign} disabled={assignMutation.isPending}>
+                  Assign
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="space-y-4">
@@ -574,6 +707,13 @@ export const CourseManagement = ({
                           onClick={() => handleEdit(course)}
                         >
                           <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleOpenAssign(course)}
+                        >
+                          Assign
                         </Button>
                         <Button
                           variant="outline"
