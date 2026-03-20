@@ -65,6 +65,7 @@ interface Course {
   year: string;
   credits: number;
   instructor: string;
+  advisorEmail: string;
   enrollmentCount: number;
   createdAt: string;
 }
@@ -99,6 +100,7 @@ export const CourseManagement = ({ user }: CourseManagementProps) => {
       year: "2024",
       credits: 3,
       instructor: "Dr. Johnson",
+      advisorEmail: "johnson@university.edu",
       enrollmentCount: 18,
       createdAt: "2024-01-20",
     },
@@ -111,13 +113,18 @@ export const CourseManagement = ({ user }: CourseManagementProps) => {
       year: "2024",
       credits: 6,
       instructor: "Dr. Smith",
+      advisorEmail: "smith@university.edu",
       enrollmentCount: 25,
       createdAt: "2024-01-15",
     },
   ]);
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
+  const [assigningCourse, setAssigningCourse] = useState<Course | null>(null);
+  const [assignAdvisorName, setAssignAdvisorName] = useState("");
+  const [assignAdvisorEmail, setAssignAdvisorEmail] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [semesterFilter, setSemesterFilter] = useState("all");
   const [yearFilter, setYearFilter] = useState("all");
@@ -145,6 +152,7 @@ export const CourseManagement = ({ user }: CourseManagementProps) => {
       year: data.year,
       credits: parseInt(data.credits),
       instructor: data.instructor,
+      advisorEmail: editingCourse ? editingCourse.advisorEmail : user.email,
       enrollmentCount: editingCourse ? editingCourse.enrollmentCount : 0,
       createdAt: editingCourse
         ? editingCourse.createdAt
@@ -195,6 +203,49 @@ export const CourseManagement = ({ user }: CourseManagementProps) => {
       description: "Course has been successfully deleted.",
       variant: "destructive",
     });
+  };
+
+  const handleOpenAssign = (course: Course) => {
+    setAssigningCourse(course);
+    setAssignAdvisorName(course.instructor);
+    setAssignAdvisorEmail(course.advisorEmail);
+    setIsAssignDialogOpen(true);
+  };
+
+  const handleAssign = () => {
+    const trimmedName = assignAdvisorName.trim();
+    const trimmedEmail = assignAdvisorEmail.trim();
+
+    if (!assigningCourse || !trimmedName || !trimmedEmail) {
+      toast({
+        title: "Missing Data",
+        description: "Advisor name and email are required.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setCourses((prev) =>
+      prev.map((course) =>
+        course.id === assigningCourse.id
+          ? {
+              ...course,
+              instructor: trimmedName,
+              advisorEmail: trimmedEmail,
+            }
+          : course,
+      ),
+    );
+
+    toast({
+      title: "Advisor Assigned",
+      description: "Advisor details updated successfully.",
+    });
+
+    setIsAssignDialogOpen(false);
+    setAssigningCourse(null);
+    setAssignAdvisorName("");
+    setAssignAdvisorEmail("");
   };
 
   const getSemesterBadgeColor = (semester: string) => {
@@ -409,6 +460,58 @@ export const CourseManagement = ({ user }: CourseManagementProps) => {
             </Form>
           </DialogContent>
         </Dialog>
+
+        <Dialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Assign Advisor</DialogTitle>
+              <DialogDescription>
+                Enter advisor name and email for this course.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="assign-advisor-name">Advisor Name</Label>
+                <Input
+                  id="assign-advisor-name"
+                  value={assignAdvisorName}
+                  onChange={(e) => setAssignAdvisorName(e.target.value)}
+                  placeholder="Enter advisor name"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="assign-advisor-email">Advisor Email</Label>
+                <Input
+                  id="assign-advisor-email"
+                  type="email"
+                  value={assignAdvisorEmail}
+                  onChange={(e) => setAssignAdvisorEmail(e.target.value)}
+                  placeholder="advisor@university.edu"
+                />
+              </div>
+
+              <div className="flex justify-end space-x-2 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setIsAssignDialogOpen(false);
+                    setAssigningCourse(null);
+                    setAssignAdvisorName("");
+                    setAssignAdvisorEmail("");
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button type="button" onClick={handleAssign}>
+                  Assign
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="space-y-4">
@@ -475,6 +578,7 @@ export const CourseManagement = ({ user }: CourseManagementProps) => {
                   <TableHead>Year</TableHead>
                   <TableHead>Credits</TableHead>
                   <TableHead>Instructor</TableHead>
+                  <TableHead>Advisor Email</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -493,6 +597,7 @@ export const CourseManagement = ({ user }: CourseManagementProps) => {
                     <TableCell>{course.year}</TableCell>
                     <TableCell>{course.credits}</TableCell>
                     <TableCell>{course.instructor}</TableCell>
+                    <TableCell>{course.advisorEmail}</TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
                         <Button
@@ -501,6 +606,13 @@ export const CourseManagement = ({ user }: CourseManagementProps) => {
                           onClick={() => handleEdit(course)}
                         >
                           <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleOpenAssign(course)}
+                        >
+                          Assign
                         </Button>
                         <Button
                           variant="outline"
