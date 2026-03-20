@@ -46,7 +46,7 @@ export const Sidebar = ({ user, currentView, onViewChange }: SidebarProps) => {
           { id: "my-projects", label: "Advisee Projects", icon: BookOpen },
           ...commonItems,
           { id: "advisor-course", label: "Course", icon: GraduationCap },
-          { id: "rubrics", label: "Rubrics", icon: ClipboardList },
+          { id: "rubrics", label: "Rubric Management", icon: ClipboardList },
           { id: "account-details", label: "Account Detail", icon: UserCog },
         ];
       case "coordinator":
@@ -55,7 +55,7 @@ export const Sidebar = ({ user, currentView, onViewChange }: SidebarProps) => {
           { id: "users", label: "User Management", icon: Users },
           { id: "courses", label: "Course Management", icon: GraduationCap },
           { id: "student-roster", label: "Student Roster", icon: UserPlus },
-          { id: "rubrics", label: "Rubric Management", icon: ClipboardList },
+          { id: "rubrics", label: "Rubrics", icon: ClipboardList },
           { id: "reports", label: "Reports", icon: BarChart3 },
           ...commonItems,
           { id: "account-details", label: "Account Detail", icon: UserCog },

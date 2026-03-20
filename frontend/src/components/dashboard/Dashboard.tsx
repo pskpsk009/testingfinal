@@ -224,6 +224,7 @@ export const Dashboard = ({ user, authToken, onLogout }: DashboardProps) => {
           <AdvisorCoursePlaceholder
             authToken={authToken}
             onViewProject={(id) => handleProjectSelection(id, "advisor-course")}
+            onCreateRubric={() => handleViewChange("rubrics")}
           />
         );
       case "student-roster":
@@ -231,7 +232,7 @@ export const Dashboard = ({ user, authToken, onLogout }: DashboardProps) => {
       case "reports":
         return <ReportingDashboard user={user} />;
       case "rubrics":
-        return user.role === "coordinator"
+        return user.role === "advisor"
           ? <RubricManagement user={user} authToken={authToken} />
           : <RubricViewer user={user} authToken={authToken} />;
       case "account-details":

@@ -302,10 +302,10 @@ export const RubricManagement = ({ user, authToken }: RubricManagementProps) => 
     return plo ? `${plo.code}: ${plo.description}` : ploId;
   };
 
-  if (user.role !== "coordinator") {
+  if (user.role !== "advisor") {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-muted-foreground">Only coordinators can manage rubrics.</p>
+        <p className="text-muted-foreground">Only advisors can manage rubrics.</p>
       </div>
     );
   }

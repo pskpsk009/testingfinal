@@ -29,6 +29,7 @@ import {
   Users,
   CheckCircle,
   XCircle,
+  Plus,
 } from "lucide-react";
 import { useCourses } from "@/hooks/use-courses";
 import { fetchCourseProjects } from "@/services/courseApi";
@@ -61,9 +62,10 @@ interface AdvisorCourse {
 interface AdvisorCoursePlaceholderProps {
   authToken: string | null;
   onViewProject: (projectId: string) => void;
+  onCreateRubric: () => void;
 }
 
-export const AdvisorCoursePlaceholder = ({ authToken, onViewProject }: AdvisorCoursePlaceholderProps) => {
+export const AdvisorCoursePlaceholder = ({ authToken, onViewProject, onCreateRubric }: AdvisorCoursePlaceholderProps) => {
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [courseProjects, setCourseProjects] = useState<any[]>([]);
@@ -259,10 +261,16 @@ export const AdvisorCoursePlaceholder = ({ authToken, onViewProject }: AdvisorCo
 
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-2xl">
-              <GraduationCap className="h-6 w-6 text-blue-600" />
-              {selectedCourse.title}
-            </CardTitle>
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <CardTitle className="flex items-center gap-2 text-2xl">
+                <GraduationCap className="h-6 w-6 text-blue-600" />
+                {selectedCourse.title}
+              </CardTitle>
+              <Button onClick={onCreateRubric} className="w-full md:w-auto">
+                <Plus className="mr-2 h-4 w-4" />
+                Create Rubric
+              </Button>
+            </div>
             <CardDescription>
               {selectedCourse.code} • Semester {selectedCourse.semester} •{" "}
               {selectedCourse.year}

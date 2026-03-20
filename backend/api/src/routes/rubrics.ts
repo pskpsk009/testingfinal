@@ -1,5 +1,5 @@
 import { Router, Response } from "express";
-import { AuthedRequest, verifyFirebaseAuth, requireCoordinator } from "../middleware/auth";
+import { AuthedRequest, verifyFirebaseAuth, requireAdvisor } from "../middleware/auth";
 import {
   listRubrics,
   getRubricById,
@@ -57,8 +57,8 @@ rubricsRouter.get("/:id", async (req: AuthedRequest, res: Response) => {
   res.json({ rubric: result.data });
 });
 
-// POST /rubrics — create a new rubric (coordinator only)
-rubricsRouter.post("/", requireCoordinator, async (req: AuthedRequest, res: Response) => {
+// POST /rubrics — create a new rubric (advisor only)
+rubricsRouter.post("/", requireAdvisor, async (req: AuthedRequest, res: Response) => {
   const { name, description, projectTypes, criteria, maxPoints } = req.body;
 
   if (!name || !criteria || !Array.isArray(criteria) || criteria.length === 0) {
@@ -81,8 +81,8 @@ rubricsRouter.post("/", requireCoordinator, async (req: AuthedRequest, res: Resp
   res.status(201).json({ rubric: result.data });
 });
 
-// PUT /rubrics/:id — update a rubric (coordinator only)
-rubricsRouter.put("/:id", requireCoordinator, async (req: AuthedRequest, res: Response) => {
+// PUT /rubrics/:id — update a rubric (advisor only)
+rubricsRouter.put("/:id", requireAdvisor, async (req: AuthedRequest, res: Response) => {
   const id = parseInt(req.params.id, 10);
 
   if (isNaN(id)) {
@@ -104,8 +104,8 @@ rubricsRouter.put("/:id", requireCoordinator, async (req: AuthedRequest, res: Re
   res.json({ rubric: result.data });
 });
 
-// PATCH /rubrics/:id/toggle — toggle active status (coordinator only)
-rubricsRouter.patch("/:id/toggle", requireCoordinator, async (req: AuthedRequest, res: Response) => {
+// PATCH /rubrics/:id/toggle — toggle active status (advisor only)
+rubricsRouter.patch("/:id/toggle", requireAdvisor, async (req: AuthedRequest, res: Response) => {
   const id = parseInt(req.params.id, 10);
 
   if (isNaN(id)) {
@@ -118,8 +118,8 @@ rubricsRouter.patch("/:id/toggle", requireCoordinator, async (req: AuthedRequest
   res.json({ rubric: result.data });
 });
 
-// DELETE /rubrics/:id — delete a rubric (coordinator only)
-rubricsRouter.delete("/:id", requireCoordinator, async (req: AuthedRequest, res: Response) => {
+// DELETE /rubrics/:id — delete a rubric (advisor only)
+rubricsRouter.delete("/:id", requireAdvisor, async (req: AuthedRequest, res: Response) => {
   const id = parseInt(req.params.id, 10);
 
   if (isNaN(id)) {

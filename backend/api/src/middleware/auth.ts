@@ -8,6 +8,7 @@ export interface AuthedRequest extends Request {
 
 const BEARER_PREFIX = "Bearer ";
 const COORDINATOR_ROLE = "coordinator";
+const ADVISOR_ROLE = "advisor";
 
 export const verifyFirebaseAuth: RequestHandler = async (
   req: AuthedRequest,
@@ -48,6 +49,21 @@ export const requireCoordinator: RequestHandler = (
     res
       .status(403)
       .json({ error: "Forbidden", message: "Coordinator role required." });
+    return;
+  }
+
+  next();
+};
+
+export const requireAdvisor: RequestHandler = (
+  req: AuthedRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  const role = req.user?.role;
+
+  if (role !== ADVISOR_ROLE) {
+    res.status(403).json({ error: "Forbidden", message: "Advisor role required." });
     return;
   }
 
