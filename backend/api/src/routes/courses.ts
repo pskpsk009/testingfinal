@@ -280,22 +280,36 @@ coursesRouter.put(
 
     const supabase = getSupabaseAdminClient();
 
-    const advisorResponse = await findUserByEmail(advisorEmail);
+    const { data: existingCourse, error: existingCourseError } = await supabase
+      .from("course")
+      .select("id, advisor_id")
+      .eq("id", parsedCourseId)
+      .maybeSingle();
 
-    if (advisorResponse.error || !advisorResponse.data) {
-      res
-        .status(404)
-        .json({ error: "Advisor not found with the provided email." });
+    if (existingCourseError) {
+      res.status(500).json({ error: existingCourseError.message });
       return;
     }
 
-    const advisor = advisorResponse.data;
-
-    if (advisor.role !== "advisor") {
-      res
-        .status(400)
-        .json({ error: "The provided email does not belong to an advisor." });
+    if (!existingCourse) {
+      res.status(404).json({ error: "Course not found." });
       return;
+    }
+
+    let nextAdvisorId = existingCourse.advisor_id;
+
+    // Preserve existing advisor assignment when incoming advisorEmail is invalid
+    // so that non-advisor historical data does not block unrelated course edits.
+    if (typeof advisorEmail === "string" && advisorEmail.trim().length > 0) {
+      const advisorResponse = await findUserByEmail(advisorEmail.trim());
+      if (advisorResponse.error) {
+        res.status(500).json({ error: advisorResponse.error.message });
+        return;
+      }
+
+      if (advisorResponse.data && advisorResponse.data.role === "advisor") {
+        nextAdvisorId = advisorResponse.data.id;
+      }
     }
 
     const { data: course, error } = await supabase
@@ -305,7 +319,7 @@ coursesRouter.put(
         semester,
         year: parseInt(year),
         credit: credits.toString(),
-        advisor_id: advisor.id,
+        advisor_id: nextAdvisorId,
       })
       .eq("id", parsedCourseId)
       .select()
