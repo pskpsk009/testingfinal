@@ -7,6 +7,23 @@ import { adminAuth } from "../config/firebase";
 
 const profileRouter = Router();
 
+type FirebaseLikeError = {
+  code?: unknown;
+  message?: unknown;
+};
+
+const getFirebaseErrorCode = (error: unknown): string | null => {
+  if (!error || typeof error !== "object") return null;
+  const code = (error as FirebaseLikeError).code;
+  return typeof code === "string" && code.length > 0 ? code : null;
+};
+
+const getFirebaseErrorMessage = (error: unknown): string | null => {
+  if (!error || typeof error !== "object") return null;
+  const message = (error as FirebaseLikeError).message;
+  return typeof message === "string" && message.length > 0 ? message : null;
+};
+
 /**
  * @openapi
  * /profile:
@@ -103,11 +120,20 @@ profileRouter.post(
       await adminAuth.updateUser(uid, { password: newPassword });
       res.json({ message: "Password updated successfully." });
     } catch (error) {
+      const errorCode = getFirebaseErrorCode(error);
+      const errorMessage = getFirebaseErrorMessage(error);
+
       // eslint-disable-next-line no-console
-      console.error("Password change error:", error);
-      res
-        .status(500)
-        .json({ error: "Failed to update password. Please try again." });
+      console.error("Password change error:", {
+        code: errorCode,
+        message: errorMessage,
+      });
+
+      res.status(500).json({
+        error: errorCode
+          ? `Failed to update password (${errorCode}).`
+          : "Failed to update password. Please try again.",
+      });
     }
   },
 );
