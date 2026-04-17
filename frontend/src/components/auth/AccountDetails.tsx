@@ -138,10 +138,13 @@ export const AccountDetails = ({ user, authToken }: AccountDetailsProps) => {
       setNewPassword("");
       setConfirmPassword("");
       setShowForm(false);
-    } catch {
+    } catch (error) {
       setMessage({
         type: "error",
-        text: "Failed to update password. Please try again.",
+        text:
+          error instanceof Error
+            ? `Failed to update password. ${error.message}`
+            : "Failed to update password. Please try again.",
       });
     } finally {
       setIsResetting(false);
