@@ -38,7 +38,22 @@ const resolveBaseUrl = (): string => {
   const meta = import.meta as unknown as {
     env?: Record<string, string | undefined>;
   };
-  const configured = meta.env?.VITE_API_BASE_URL ?? "http://localhost:5001";
+
+  // Prefer explicit Vite env when available.
+  const explicit = meta.env?.VITE_API_BASE_URL?.trim();
+  if (explicit) {
+    return explicit.replace(/\/$/, "");
+  }
+
+  // Production-safe fallback for Render deployments.
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname;
+    if (host.endsWith("onrender.com")) {
+      return "https://se-hub-pro.onrender.com";
+    }
+  }
+
+  const configured = "http://localhost:5001";
   return configured.replace(/\/$/, "");
 };
 
