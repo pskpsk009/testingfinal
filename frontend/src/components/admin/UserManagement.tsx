@@ -87,6 +87,7 @@ export const UserManagement = ({ user }: UserManagementProps) => {
   const [availableCourses, setAvailableCourses] = useState<CourseDto[]>([]);
   const [isLoadingCourses, setIsLoadingCourses] = useState(false);
   const [assigningUser, setAssigningUser] = useState<User | null>(null);
+  const [bulkAssignUserIds, setBulkAssignUserIds] = useState<string[]>([]);
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
   const [selectedCourseIds, setSelectedCourseIds] = useState<Set<string>>(
     new Set(),
@@ -110,6 +111,12 @@ export const UserManagement = ({ user }: UserManagementProps) => {
     const matchesRole = roleFilter === "all" || u.role === roleFilter;
     return matchesSearch && matchesRole;
   });
+
+  const selectedStudentUsers = users.filter(
+    (u) => selectedUsers.has(u.id) && u.role === "student",
+  );
+  const selectedStudentCount = selectedStudentUsers.length;
+  const selectedNonStudentCount = selectedUsers.size - selectedStudentCount;
 
   const getRoleColor = (role: string) => {
     switch (role) {
@@ -528,9 +535,35 @@ export const UserManagement = ({ user }: UserManagementProps) => {
   };
 
   const handleOpenAssignDialog = (studentUser: User) => {
+    setBulkAssignUserIds([]);
     setAssigningUser(studentUser);
     setSelectedCourseIds(new Set());
     setIsAssignDialogOpen(true);
+  };
+
+  const handleOpenBulkAssignDialog = () => {
+    const studentIds = selectedStudentUsers.map((u) => u.id);
+
+    if (studentIds.length === 0) {
+      toast({
+        title: "No students selected",
+        description: "Select at least one student to assign courses.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setAssigningUser(null);
+    setBulkAssignUserIds(studentIds);
+    setSelectedCourseIds(new Set());
+    setIsAssignDialogOpen(true);
+
+    if (selectedNonStudentCount > 0) {
+      toast({
+        title: "Heads up",
+        description: `${selectedNonStudentCount} non-student user(s) will be skipped.`,
+      });
+    }
   };
 
   const toggleSelectedCourse = (courseId: string) => {
@@ -548,7 +581,7 @@ export const UserManagement = ({ user }: UserManagementProps) => {
   };
 
   const handleAssignCourses = async () => {
-    if (!assigningUser) {
+    if (!assigningUser && bulkAssignUserIds.length === 0) {
       toast({
         title: "Error",
         description: "No student selected for assignment.",
@@ -577,36 +610,94 @@ export const UserManagement = ({ user }: UserManagementProps) => {
       return;
     }
 
-    const numericId = Number(assigningUser.id);
-
-    if (!Number.isInteger(numericId) || numericId <= 0) {
-      toast({
-        title: "Error",
-        description: "Invalid student selected.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     const courseIds = Array.from(selectedCourseIds).map((id) => Number(id));
 
     setIsAssigningCourses(true);
 
     try {
-      const assignedCourseIds = await assignStudentToCourses(
-        numericId,
-        courseIds,
-        token,
+      if (assigningUser) {
+        const numericId = Number(assigningUser.id);
+
+        if (!Number.isInteger(numericId) || numericId <= 0) {
+          toast({
+            title: "Error",
+            description: "Invalid student selected.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        const assignedCourseIds = await assignStudentToCourses(
+          numericId,
+          courseIds,
+          token,
+        );
+
+        setIsAssignDialogOpen(false);
+        setAssigningUser(null);
+        setBulkAssignUserIds([]);
+        setSelectedCourseIds(new Set());
+
+        toast({
+          title: "Success",
+          description: `Assigned ${assigningUser.name} to ${assignedCourseIds.length} course(s).`,
+        });
+        return;
+      }
+
+      const studentsToAssign = users.filter(
+        (u) => bulkAssignUserIds.includes(u.id) && u.role === "student",
       );
+
+      if (studentsToAssign.length === 0) {
+        toast({
+          title: "No students selected",
+          description: "Select at least one student to assign courses.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      let successCount = 0;
+      const errors: string[] = [];
+
+      for (const studentUser of studentsToAssign) {
+        const numericId = Number(studentUser.id);
+
+        if (!Number.isInteger(numericId) || numericId <= 0) {
+          errors.push(`${studentUser.name}: invalid user id`);
+          continue;
+        }
+
+        try {
+          await assignStudentToCourses(numericId, courseIds, token);
+          successCount += 1;
+        } catch (error) {
+          const message =
+            error instanceof ApiError ? error.message : "assignment failed";
+          errors.push(`${studentUser.name}: ${message}`);
+        }
+      }
 
       setIsAssignDialogOpen(false);
       setAssigningUser(null);
+      setBulkAssignUserIds([]);
       setSelectedCourseIds(new Set());
 
-      toast({
-        title: "Success",
-        description: `Assigned ${assigningUser.name} to ${assignedCourseIds.length} course(s).`,
-      });
+      if (successCount > 0) {
+        toast({
+          title: "Success",
+          description: `Assigned ${successCount} student(s) to ${courseIds.length} course(s).`,
+        });
+      }
+
+      if (errors.length > 0) {
+        toast({
+          title: "Some assignments failed",
+          description: errors.join("; "),
+          variant: "destructive",
+        });
+      }
     } catch (error) {
       const message =
         error instanceof ApiError
@@ -1040,6 +1131,7 @@ export const UserManagement = ({ user }: UserManagementProps) => {
           setIsAssignDialogOpen(open);
           if (!open) {
             setAssigningUser(null);
+            setBulkAssignUserIds([]);
             setSelectedCourseIds(new Set());
           }
         }}
@@ -1047,8 +1139,9 @@ export const UserManagement = ({ user }: UserManagementProps) => {
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>
-              Assign Student To Courses
-              {assigningUser ? ` - ${assigningUser.name}` : ""}
+              {assigningUser
+                ? `Assign Student To Courses - ${assigningUser.name}`
+                : `Assign Students To Courses - ${bulkAssignUserIds.length} selected`}
             </DialogTitle>
           </DialogHeader>
 
@@ -1088,6 +1181,7 @@ export const UserManagement = ({ user }: UserManagementProps) => {
                   onClick={() => {
                     setIsAssignDialogOpen(false);
                     setAssigningUser(null);
+                    setBulkAssignUserIds([]);
                     setSelectedCourseIds(new Set());
                   }}
                 >
@@ -1099,7 +1193,11 @@ export const UserManagement = ({ user }: UserManagementProps) => {
                     void handleAssignCourses();
                   }}
                 >
-                  {isAssigningCourses ? "Assigning..." : "Assign"}
+                  {isAssigningCourses
+                    ? "Assigning..."
+                    : assigningUser
+                      ? "Assign"
+                      : "Assign Selected Students"}
                 </Button>
               </div>
             </div>
@@ -1148,6 +1246,9 @@ export const UserManagement = ({ user }: UserManagementProps) => {
             <div className="flex items-center justify-between bg-red-50 border border-red-200 rounded-lg px-4 py-3 mb-4">
               <span className="text-sm font-medium text-red-800">
                 {selectedUsers.size} user(s) selected
+                {selectedStudentCount > 0
+                  ? ` (${selectedStudentCount} student(s) assignable)`
+                  : ""}
               </span>
               <div className="flex items-center space-x-2">
                 <Button
@@ -1169,6 +1270,18 @@ export const UserManagement = ({ user }: UserManagementProps) => {
                   {isDeletingBulk
                     ? "Deleting..."
                     : `Delete ${selectedUsers.size} User(s)`}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={isAssigningCourses || selectedStudentCount === 0}
+                  onClick={() => {
+                    handleOpenBulkAssignDialog();
+                  }}
+                >
+                  {isAssigningCourses
+                    ? "Assigning..."
+                    : `Assign ${selectedStudentCount} Student(s)`}
                 </Button>
               </div>
             </div>
