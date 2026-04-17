@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -49,7 +50,14 @@ import { z } from "zod";
 import { Plus, Edit, Trash2, Users, Calendar, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useCourses } from "@/hooks/use-courses";
-import { createCourse, deleteCourse, updateCourse } from "@/services/courseApi";
+import {
+  createCourse,
+  deleteCourse,
+  updateCourse,
+  fetchCourseRoster,
+  deleteCourseRosterEntry,
+  type RosterEntryDto,
+} from "@/services/courseApi";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 interface User {
@@ -109,6 +117,15 @@ export const CourseManagement = ({
   const [searchTerm, setSearchTerm] = useState("");
   const [semesterFilter, setSemesterFilter] = useState("all");
   const [yearFilter, setYearFilter] = useState("all");
+  const [isStudentsDialogOpen, setIsStudentsDialogOpen] = useState(false);
+  const [studentsDialogCourse, setStudentsDialogCourse] =
+    useState<Course | null>(null);
+  const [courseStudents, setCourseStudents] = useState<RosterEntryDto[]>([]);
+  const [isLoadingStudents, setIsLoadingStudents] = useState(false);
+  const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const [isRemovingStudents, setIsRemovingStudents] = useState(false);
 
   const createMutation = useMutation({
     mutationFn: async (data: CourseFormData) => {
@@ -336,6 +353,131 @@ export const CourseManagement = ({
 
   const handleAssign = () => {
     assignMutation.mutate();
+  };
+
+  const handleViewStudents = async (course: Course) => {
+    if (!authToken) {
+      toast({
+        title: "Not authenticated",
+        description: "Please log in again to view students.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setStudentsDialogCourse(course);
+    setSelectedStudentIds(new Set());
+    setIsStudentsDialogOpen(true);
+    setIsLoadingStudents(true);
+
+    try {
+      const roster = await fetchCourseRoster(course.id, authToken);
+      setCourseStudents(roster);
+    } catch (error) {
+      toast({
+        title: "Failed to load students",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Could not load student roster.",
+        variant: "destructive",
+      });
+      setCourseStudents([]);
+    } finally {
+      setIsLoadingStudents(false);
+    }
+  };
+
+  const toggleSelectedStudent = (studentId: string) => {
+    setSelectedStudentIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(studentId)) {
+        next.delete(studentId);
+      } else {
+        next.add(studentId);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectAllStudents = () => {
+    if (selectedStudentIds.size === courseStudents.length) {
+      setSelectedStudentIds(new Set());
+      return;
+    }
+
+    setSelectedStudentIds(new Set(courseStudents.map((student) => student.student_id)));
+  };
+
+  const handleRemoveStudents = async (studentIds: string[]) => {
+    if (!studentsDialogCourse) {
+      toast({
+        title: "No course selected",
+        description: "Please reopen the student list and try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!authToken) {
+      toast({
+        title: "Not authenticated",
+        description: "Please log in again to remove students.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (studentIds.length === 0) {
+      toast({
+        title: "No students selected",
+        description: "Select at least one student to remove.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsRemovingStudents(true);
+    const removedStudentIds: string[] = [];
+    const errors: string[] = [];
+
+    for (const studentId of studentIds) {
+      try {
+        await deleteCourseRosterEntry(studentsDialogCourse.id, studentId, authToken);
+        removedStudentIds.push(studentId);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Failed to remove student";
+        errors.push(`${studentId}: ${message}`);
+      }
+    }
+
+    if (removedStudentIds.length > 0) {
+      const removedIdSet = new Set(removedStudentIds);
+      setCourseStudents((prev) =>
+        prev.filter((student) => !removedIdSet.has(student.student_id)),
+      );
+      setSelectedStudentIds((prev) => {
+        const next = new Set(prev);
+        removedStudentIds.forEach((id) => next.delete(id));
+        return next;
+      });
+
+      toast({
+        title: "Students removed",
+        description: `Removed ${removedStudentIds.length} student(s) from this course.`,
+      });
+    }
+
+    if (errors.length > 0) {
+      toast({
+        title: "Some removals failed",
+        description: errors.join("; "),
+        variant: "destructive",
+      });
+    }
+
+    setIsRemovingStudents(false);
   };
 
   const getSemesterBadgeColor = (semester: string) => {
@@ -599,6 +741,118 @@ export const CourseManagement = ({
             </div>
           </DialogContent>
         </Dialog>
+
+        <Dialog
+          open={isStudentsDialogOpen}
+          onOpenChange={(open) => {
+            setIsStudentsDialogOpen(open);
+            if (!open) {
+              setSelectedStudentIds(new Set());
+            }
+          }}
+        >
+          <DialogContent className="max-w-3xl">
+            <DialogHeader>
+              <DialogTitle>
+                Students
+                {studentsDialogCourse
+                  ? ` - ${studentsDialogCourse.courseCode}`
+                  : ""}
+              </DialogTitle>
+              <DialogDescription>
+                Students merged from CSV upload and manual assignment.
+              </DialogDescription>
+            </DialogHeader>
+
+            {isLoadingStudents ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">
+                Loading student roster...
+              </div>
+            ) : courseStudents.length === 0 ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">
+                No students found for this course yet.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm text-muted-foreground">
+                    {selectedStudentIds.size} selected
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    disabled={
+                      selectedStudentIds.size === 0 || isRemovingStudents
+                    }
+                    onClick={() => {
+                      void handleRemoveStudents(Array.from(selectedStudentIds));
+                    }}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    {isRemovingStudents
+                      ? "Removing..."
+                      : `Remove ${selectedStudentIds.size} Selected`}
+                  </Button>
+                </div>
+
+                <div className="max-h-[420px] overflow-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-12">
+                          <Checkbox
+                            checked={
+                              courseStudents.length > 0 &&
+                              selectedStudentIds.size === courseStudents.length
+                            }
+                            onCheckedChange={toggleSelectAllStudents}
+                          />
+                        </TableHead>
+                        <TableHead>Student ID</TableHead>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Year</TableHead>
+                        <TableHead className="text-right">Action</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {courseStudents.map((student) => (
+                        <TableRow key={student.id}>
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedStudentIds.has(student.student_id)}
+                              onCheckedChange={() =>
+                                toggleSelectedStudent(student.student_id)
+                              }
+                            />
+                          </TableCell>
+                          <TableCell>{student.student_id}</TableCell>
+                          <TableCell>{student.name}</TableCell>
+                          <TableCell>{student.email}</TableCell>
+                          <TableCell>{student.year || "-"}</TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-red-600 hover:text-red-700"
+                              disabled={isRemovingStudents}
+                              onClick={() => {
+                                void handleRemoveStudents([student.student_id]);
+                              }}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Remove
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="space-y-4">
@@ -689,6 +943,15 @@ export const CourseManagement = ({
                     </TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            void handleViewStudents(course);
+                          }}
+                        >
+                          View students
+                        </Button>
                         <Button
                           variant="outline"
                           size="sm"

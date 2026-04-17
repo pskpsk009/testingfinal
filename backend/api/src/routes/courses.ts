@@ -34,6 +34,72 @@ const DISPLAY_STATUS_MAP: Record<ProjectStatus, string> = {
   reject: "Rejected",
 };
 
+const ensureRosterAccess = async (
+  req: AuthedRequest,
+  res: Response,
+  courseId: number,
+): Promise<boolean> => {
+  const role = req.user?.role;
+
+  if (role === "coordinator") {
+    return true;
+  }
+
+  if (role !== "advisor") {
+    res.status(403).json({
+      error: "Only coordinators or assigned advisors can access course rosters.",
+    });
+    return false;
+  }
+
+  const emailFromToken = req.user?.email;
+
+  if (!emailFromToken) {
+    res
+      .status(400)
+      .json({ error: "Email address missing from authentication token." });
+    return false;
+  }
+
+  const advisorResponse = await findUserByEmail(emailFromToken);
+
+  if (advisorResponse.error) {
+    res.status(500).json({ error: advisorResponse.error.message });
+    return false;
+  }
+
+  if (!advisorResponse.data) {
+    res.status(404).json({ error: "User not found." });
+    return false;
+  }
+
+  const supabase = getSupabaseAdminClient();
+  const { data: course, error: courseError } = await supabase
+    .from("course")
+    .select("id, advisor_id")
+    .eq("id", courseId)
+    .maybeSingle();
+
+  if (courseError) {
+    res.status(500).json({ error: courseError.message });
+    return false;
+  }
+
+  if (!course) {
+    res.status(404).json({ error: "Course not found." });
+    return false;
+  }
+
+  if (course.advisor_id !== advisorResponse.data.id) {
+    res.status(403).json({
+      error: "Advisors can only access rosters for their assigned courses.",
+    });
+    return false;
+  }
+
+  return true;
+};
+
 // Helper to format project data - matching the format from projects route
 const formatProjectForCourse = (record: ProjectWithRelations) => {
   const { project, advisor, students, metadata, links } = record;
@@ -439,6 +505,10 @@ coursesRouter.get(
       return;
     }
 
+    if (!(await ensureRosterAccess(req, res, parsedCourseId))) {
+      return;
+    }
+
     const result = await listRosterByCourse(parsedCourseId);
     if (result.error) {
       res.status(500).json({ error: result.error.message });
@@ -454,18 +524,14 @@ coursesRouter.post(
   "/:courseId/roster",
   verifyFirebaseAuth,
   async (req: AuthedRequest, res: Response) => {
-    const role = req.user?.role;
-    if (role !== "coordinator" && role !== "advisor") {
-      res.status(403).json({
-        error: "Only coordinators or advisors can modify course rosters.",
-      });
-      return;
-    }
-
     const { courseId } = req.params;
     const parsedCourseId = parseInt(courseId);
     if (Number.isNaN(parsedCourseId)) {
       res.status(400).json({ error: "Invalid courseId" });
+      return;
+    }
+
+    if (!(await ensureRosterAccess(req, res, parsedCourseId))) {
       return;
     }
 
@@ -504,18 +570,14 @@ coursesRouter.delete(
   "/:courseId/roster/:studentId",
   verifyFirebaseAuth,
   async (req: AuthedRequest, res: Response) => {
-    const role = req.user?.role;
-    if (role !== "coordinator" && role !== "advisor") {
-      res.status(403).json({
-        error: "Only coordinators or advisors can modify course rosters.",
-      });
-      return;
-    }
-
     const { courseId, studentId } = req.params;
     const parsedCourseId = parseInt(courseId);
     if (Number.isNaN(parsedCourseId)) {
       res.status(400).json({ error: "Invalid courseId" });
+      return;
+    }
+
+    if (!(await ensureRosterAccess(req, res, parsedCourseId))) {
       return;
     }
 
