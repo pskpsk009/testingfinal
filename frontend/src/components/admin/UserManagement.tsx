@@ -1340,8 +1340,9 @@ export const UserManagement = ({ user }: UserManagementProps) => {
                     <TableCell>{u.advisorName || "-"}</TableCell>
                     <TableCell>{u.password ? "********" : "-"}</TableCell>
                     <TableCell>
-                      <div className="flex space-x-2">
+                      <div className="flex items-center space-x-2">
                         <Button
+                          className="order-1"
                           size="sm"
                           variant="outline"
                           onClick={() => handleEditUser(u)}
@@ -1350,9 +1351,9 @@ export const UserManagement = ({ user }: UserManagementProps) => {
                           Edit
                         </Button>
                         <Button
+                          className="order-2 text-red-600 hover:text-red-800"
                           size="sm"
                           variant="outline"
-                          className="text-red-600 hover:text-red-800"
                           onClick={() => {
                             void handleDeleteUser(u.id);
                           }}
@@ -1362,6 +1363,7 @@ export const UserManagement = ({ user }: UserManagementProps) => {
                         </Button>
                         {u.role === "student" && (
                           <Button
+                            className="order-3"
                             size="sm"
                             variant="outline"
                             onClick={() => handleOpenAssignDialog(u)}
