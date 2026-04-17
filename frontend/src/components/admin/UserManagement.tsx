@@ -1341,15 +1341,6 @@ export const UserManagement = ({ user }: UserManagementProps) => {
                     <TableCell>{u.password ? "********" : "-"}</TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
-                        {u.role === "student" && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleOpenAssignDialog(u)}
-                          >
-                            Assign
-                          </Button>
-                        )}
                         <Button
                           size="sm"
                           variant="outline"
@@ -1369,6 +1360,15 @@ export const UserManagement = ({ user }: UserManagementProps) => {
                           <Trash2 className="w-4 h-4 mr-1" />
                           Delete
                         </Button>
+                        {u.role === "student" && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleOpenAssignDialog(u)}
+                          >
+                            Assign
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
