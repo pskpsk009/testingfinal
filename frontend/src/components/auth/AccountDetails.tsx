@@ -67,6 +67,9 @@ export const AccountDetails = ({ user, authToken }: AccountDetailsProps) => {
     if (!/[0-9]/.test(password)) {
       return "Password must contain at least one number.";
     }
+    if (!/[!@#$%^&*()_+\-=\[\]{}|;:'\",.<>?/`~]/.test(password)) {
+      return "Password must contain at least one special character.";
+    }
     return null;
   };
 
@@ -108,9 +111,25 @@ export const AccountDetails = ({ user, authToken }: AccountDetailsProps) => {
       const body = await response.json().catch(() => ({}));
 
       if (!response.ok) {
+        const validationDetail = Array.isArray(body?.details)
+          ? body.details.find((d: unknown) => {
+              if (!d || typeof d !== "object") return false;
+              const entry = d as { message?: unknown };
+              return typeof entry.message === "string" && entry.message.length > 0;
+            })
+          : null;
+
+        const validationMessage =
+          validationDetail && typeof validationDetail === "object"
+            ? (validationDetail as { message?: string }).message
+            : null;
+
         setMessage({
           type: "error",
-          text: body?.error || "Failed to update password. Please try again.",
+          text:
+            validationMessage ||
+            body?.error ||
+            "Failed to update password. Please try again.",
         });
         return;
       }
@@ -239,7 +258,7 @@ export const AccountDetails = ({ user, authToken }: AccountDetailsProps) => {
                 </div>
                 <p className="text-xs text-gray-500">
                   At least 8 characters, with uppercase, lowercase, and a
-                  number.
+                  number, and a special character.
                 </p>
               </div>
 
