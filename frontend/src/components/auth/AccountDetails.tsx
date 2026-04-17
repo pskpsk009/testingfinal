@@ -42,6 +42,8 @@ const resolveBaseUrl = (): string => {
   return configured.replace(/\/$/, "");
 };
 
+const API_BASE_URL = resolveBaseUrl();
+
 export const AccountDetails = ({ user, authToken }: AccountDetailsProps) => {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
