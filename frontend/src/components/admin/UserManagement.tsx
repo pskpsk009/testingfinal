@@ -44,11 +44,13 @@ import {
   ApiError,
   CreateUserRequest,
   UpdateUserRequest,
+  assignStudentToCourses,
   createUser,
   deleteUser,
   listUsers,
   updateUser,
 } from "@/services/userApi";
+import { CourseDto, fetchCourses } from "@/services/courseApi";
 
 interface User {
   id: string;
@@ -82,6 +84,14 @@ export const UserManagement = ({ user }: UserManagementProps) => {
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
   const [isDeletingBulk, setIsDeletingBulk] = useState(false);
+  const [availableCourses, setAvailableCourses] = useState<CourseDto[]>([]);
+  const [isLoadingCourses, setIsLoadingCourses] = useState(false);
+  const [assigningUser, setAssigningUser] = useState<User | null>(null);
+  const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
+  const [selectedCourseIds, setSelectedCourseIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const [isAssigningCourses, setIsAssigningCourses] = useState(false);
   const [newUser, setNewUser] = useState({
     name: "",
     email: "",
@@ -164,6 +174,42 @@ export const UserManagement = ({ user }: UserManagementProps) => {
   useEffect(() => {
     void fetchUsers();
   }, [fetchUsers]);
+
+  const fetchCoordinatorCourses = useCallback(async () => {
+    if (user.role !== "coordinator") {
+      return;
+    }
+
+    const token = getAuthToken();
+
+    if (!token) {
+      return;
+    }
+
+    setIsLoadingCourses(true);
+
+    try {
+      const courses = await fetchCourses(token);
+      setAvailableCourses(courses);
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Failed to load coordinator courses.";
+      toast({
+        title: "Error",
+        description: message,
+        variant: "destructive",
+      });
+      setAvailableCourses([]);
+    } finally {
+      setIsLoadingCourses(false);
+    }
+  }, [toast, user.role]);
+
+  useEffect(() => {
+    void fetchCoordinatorCourses();
+  }, [fetchCoordinatorCourses]);
 
   const handleAddUser = async (): Promise<void> => {
     if (!newUser.name || !newUser.email || !newUser.role || !newUser.password) {
@@ -478,6 +524,101 @@ export const UserManagement = ({ user }: UserManagementProps) => {
       });
     } finally {
       setIsSavingUser(false);
+    }
+  };
+
+  const handleOpenAssignDialog = (studentUser: User) => {
+    setAssigningUser(studentUser);
+    setSelectedCourseIds(new Set());
+    setIsAssignDialogOpen(true);
+  };
+
+  const toggleSelectedCourse = (courseId: string) => {
+    setSelectedCourseIds((prev) => {
+      const next = new Set(prev);
+
+      if (next.has(courseId)) {
+        next.delete(courseId);
+      } else {
+        next.add(courseId);
+      }
+
+      return next;
+    });
+  };
+
+  const handleAssignCourses = async () => {
+    if (!assigningUser) {
+      toast({
+        title: "Error",
+        description: "No student selected for assignment.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const token = getAuthToken();
+
+    if (!token) {
+      toast({
+        title: "Authentication required",
+        description: "Please sign in again to assign courses.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (selectedCourseIds.size === 0) {
+      toast({
+        title: "No course selected",
+        description: "Select at least one course.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const numericId = Number(assigningUser.id);
+
+    if (!Number.isInteger(numericId) || numericId <= 0) {
+      toast({
+        title: "Error",
+        description: "Invalid student selected.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const courseIds = Array.from(selectedCourseIds).map((id) => Number(id));
+
+    setIsAssigningCourses(true);
+
+    try {
+      const assignedCourseIds = await assignStudentToCourses(
+        numericId,
+        courseIds,
+        token,
+      );
+
+      setIsAssignDialogOpen(false);
+      setAssigningUser(null);
+      setSelectedCourseIds(new Set());
+
+      toast({
+        title: "Success",
+        description: `Assigned ${assigningUser.name} to ${assignedCourseIds.length} course(s).`,
+      });
+    } catch (error) {
+      const message =
+        error instanceof ApiError
+          ? error.message
+          : "Failed to assign student to courses.";
+      toast({
+        title: "Error",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsAssigningCourses(false);
     }
   };
 
@@ -893,6 +1034,79 @@ export const UserManagement = ({ user }: UserManagementProps) => {
         </DialogContent>
       </Dialog>
 
+      <Dialog
+        open={isAssignDialogOpen}
+        onOpenChange={(open) => {
+          setIsAssignDialogOpen(open);
+          if (!open) {
+            setAssigningUser(null);
+            setSelectedCourseIds(new Set());
+          }
+        }}
+      >
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              Assign Student To Courses
+              {assigningUser ? ` - ${assigningUser.name}` : ""}
+            </DialogTitle>
+          </DialogHeader>
+
+          {isLoadingCourses ? (
+            <div className="py-8 text-sm text-center text-gray-500">
+              Loading courses...
+            </div>
+          ) : availableCourses.length === 0 ? (
+            <div className="py-8 text-sm text-center text-gray-500">
+              No courses available for assignment.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="max-h-80 overflow-y-auto border rounded-lg p-3 space-y-2">
+                {availableCourses.map((course) => (
+                  <label
+                    key={course.id}
+                    className="flex items-center gap-3 rounded-md border p-3 cursor-pointer"
+                  >
+                    <Checkbox
+                      checked={selectedCourseIds.has(course.id)}
+                      onCheckedChange={() => toggleSelectedCourse(course.id)}
+                    />
+                    <div className="flex-1">
+                      <div className="font-medium">{course.courseCode}</div>
+                      <div className="text-xs text-gray-500">
+                        Semester {course.semester} / {course.year}
+                      </div>
+                    </div>
+                  </label>
+                ))}
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setIsAssignDialogOpen(false);
+                    setAssigningUser(null);
+                    setSelectedCourseIds(new Set());
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  disabled={isAssigningCourses || selectedCourseIds.size === 0}
+                  onClick={() => {
+                    void handleAssignCourses();
+                  }}
+                >
+                  {isAssigningCourses ? "Assigning..." : "Assign"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       <Card>
         <CardHeader>
           <div className="flex justify-between items-center">
@@ -1014,6 +1228,15 @@ export const UserManagement = ({ user }: UserManagementProps) => {
                     <TableCell>{u.password ? "********" : "-"}</TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
+                        {u.role === "student" && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleOpenAssignDialog(u)}
+                          >
+                            Assign
+                          </Button>
+                        )}
                         <Button
                           size="sm"
                           variant="outline"

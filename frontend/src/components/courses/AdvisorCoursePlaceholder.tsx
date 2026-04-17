@@ -587,7 +587,7 @@ export const AdvisorCoursePlaceholder = ({
               {studentsDialogCourse ? ` - ${studentsDialogCourse.code}` : ""}
             </DialogTitle>
             <DialogDescription>
-              Students uploaded via CSV for this course.
+              Students merged from CSV upload and manual assignment.
             </DialogDescription>
           </DialogHeader>
 
@@ -597,7 +597,7 @@ export const AdvisorCoursePlaceholder = ({
             </div>
           ) : courseStudents.length === 0 ? (
             <div className="py-8 text-center text-sm text-muted-foreground">
-              No students uploaded for this course yet.
+              No students found for this course yet.
             </div>
           ) : (
             <div className="max-h-[420px] overflow-auto">

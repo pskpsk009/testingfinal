@@ -224,3 +224,57 @@ export const deleteUser = async (id: number, token: string): Promise<void> => {
     throw new ApiError(message, response.status, body);
   }
 };
+
+interface AssignStudentCoursesResponse {
+  success?: boolean;
+  assignedCourseIds?: number[];
+}
+
+export const assignStudentToCourses = async (
+  userId: number,
+  courseIds: number[],
+  token: string,
+): Promise<number[]> => {
+  const normalizedCourseIds = Array.from(
+    new Set(
+      courseIds.filter(
+        (courseId) => Number.isInteger(courseId) && courseId > 0,
+      ),
+    ),
+  );
+
+  if (normalizedCourseIds.length === 0) {
+    throw new ApiError("Please select at least one course.", 400, {
+      courseIds,
+    });
+  }
+
+  const response = await fetch(buildUrl(`/users/${userId}/course-assignments`), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ courseIds: normalizedCourseIds }),
+  });
+
+  let body: AssignStudentCoursesResponse | ApiErrorResponse | undefined;
+
+  try {
+    body = (await response.json()) as typeof body;
+  } catch (_error) {
+    body = undefined;
+  }
+
+  if (!response.ok) {
+    const message =
+      body && "error" in body && typeof body.error === "string"
+        ? body.error
+        : "Failed to assign student to courses.";
+    throw new ApiError(message, response.status, body);
+  }
+
+  return Array.isArray((body as AssignStudentCoursesResponse)?.assignedCourseIds)
+    ? ((body as AssignStudentCoursesResponse).assignedCourseIds ?? [])
+    : [];
+};

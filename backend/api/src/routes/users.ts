@@ -18,6 +18,7 @@ import {
 import { adminAuth } from "../config/firebase";
 import { getSupabaseAdminClient } from "../services/supabaseClient";
 import { sendWelcomeEmail } from "../services/emailService";
+import { upsertRosterEntries } from "../services/rosterService";
 
 const usersRouter = Router();
 
@@ -49,6 +50,16 @@ const sanitizeUser = (record: UserRecord | null | undefined) => {
 
   const { password: _password, ...rest } = record;
   return rest;
+};
+
+const deriveStudentIdentifier = (record: UserRecord): string => {
+  const localPart = record.email.split("@")[0]?.trim();
+
+  if (localPart && /^[A-Za-z0-9._-]{3,64}$/.test(localPart)) {
+    return localPart;
+  }
+
+  return String(record.id);
 };
 
 /**
@@ -394,6 +405,116 @@ usersRouter.patch(
     }
 
     res.json({ user: sanitizeUser(updatedUser) });
+  },
+);
+
+usersRouter.post(
+  "/:id/course-assignments",
+  verifyFirebaseAuth,
+  requireCoordinator,
+  async (req: AuthedRequest, res: Response) => {
+    const numericId = Number(req.params.id);
+
+    if (!Number.isInteger(numericId) || numericId <= 0) {
+      res.status(400).json({ error: "Invalid user identifier." });
+      return;
+    }
+
+    const rawCourseIds = Array.isArray(req.body?.courseIds)
+      ? req.body.courseIds
+      : [];
+
+    const courseIds = Array.from(
+      new Set(
+        rawCourseIds
+          .map((courseId: unknown) => Number(courseId))
+          .filter((courseId) => Number.isInteger(courseId) && courseId > 0),
+      ),
+    );
+
+    if (courseIds.length === 0) {
+      res.status(400).json({ error: "At least one valid courseId is required." });
+      return;
+    }
+
+    const existingUserResponse = await findUserById(numericId);
+
+    if (existingUserResponse.error) {
+      res.status(500).json({ error: existingUserResponse.error.message });
+      return;
+    }
+
+    const student = existingUserResponse.data;
+
+    if (!student) {
+      res.status(404).json({ error: "User not found." });
+      return;
+    }
+
+    if (student.role !== "student") {
+      res.status(400).json({ error: "Only student users can be assigned." });
+      return;
+    }
+
+    const supabase = getSupabaseAdminClient();
+
+    const { data: existingCourses, error: courseLookupError } = await supabase
+      .from("course")
+      .select("id")
+      .in("id", courseIds);
+
+    if (courseLookupError) {
+      res.status(500).json({ error: courseLookupError.message });
+      return;
+    }
+
+    const existingCourseIds = new Set((existingCourses ?? []).map((c) => c.id));
+    const missingCourseIds = courseIds.filter(
+      (courseId) => !existingCourseIds.has(courseId),
+    );
+
+    if (missingCourseIds.length > 0) {
+      res.status(404).json({
+        error: `Course not found for id(s): ${missingCourseIds.join(", ")}`,
+      });
+      return;
+    }
+
+    const derivedStudentId = deriveStudentIdentifier(student);
+
+    for (const courseId of courseIds) {
+      // Remove any previous row for this email in the same course to avoid
+      // duplicates when one source used a different student_id.
+      const cleanup = await supabase
+        .from("course_roster")
+        .delete()
+        .eq("course_id", courseId)
+        .eq("email", student.email)
+        .neq("student_id", derivedStudentId);
+
+      if (cleanup.error) {
+        res.status(500).json({ error: cleanup.error.message });
+        return;
+      }
+
+      const upsertResult = await upsertRosterEntries(courseId, [
+        {
+          studentId: derivedStudentId,
+          name: student.name,
+          email: student.email,
+        },
+      ]);
+
+      if (upsertResult.error) {
+        res.status(500).json({ error: upsertResult.error.message });
+        return;
+      }
+    }
+
+    res.status(201).json({
+      success: true,
+      assignedCourseIds: courseIds,
+    });
   },
 );
 
