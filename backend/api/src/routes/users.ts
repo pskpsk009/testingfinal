@@ -420,15 +420,18 @@ usersRouter.post(
       return;
     }
 
-    const rawCourseIds = Array.isArray(req.body?.courseIds)
+    const rawCourseIds: unknown[] = Array.isArray(req.body?.courseIds)
       ? req.body.courseIds
       : [];
 
-    const courseIds = Array.from(
+    const courseIds: number[] = Array.from(
       new Set(
         rawCourseIds
-          .map((courseId: unknown) => Number(courseId))
-          .filter((courseId) => Number.isInteger(courseId) && courseId > 0),
+          .map((courseId): number => Number(courseId))
+          .filter(
+            (courseId: number): boolean =>
+              Number.isInteger(courseId) && courseId > 0,
+          ),
       ),
     );
 
@@ -468,7 +471,9 @@ usersRouter.post(
       return;
     }
 
-    const existingCourseIds = new Set((existingCourses ?? []).map((c) => c.id));
+    const existingCourseIds = new Set<number>(
+      (existingCourses ?? []).map((c) => Number(c.id)),
+    );
     const missingCourseIds = courseIds.filter(
       (courseId) => !existingCourseIds.has(courseId),
     );
