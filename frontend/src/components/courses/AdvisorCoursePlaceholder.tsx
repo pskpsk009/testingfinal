@@ -350,7 +350,9 @@ export const AdvisorCoursePlaceholder = ({
       return;
     }
 
-    setSelectedStudentIds(new Set(courseStudents.map((student) => student.student_id)));
+    setSelectedStudentIds(
+      new Set(courseStudents.map((student) => student.student_id)),
+    );
   };
 
   const handleRemoveStudents = async (studentIds: string[]) => {
@@ -387,7 +389,11 @@ export const AdvisorCoursePlaceholder = ({
 
     for (const studentId of studentIds) {
       try {
-        await deleteCourseRosterEntry(studentsDialogCourse.id, studentId, authToken);
+        await deleteCourseRosterEntry(
+          studentsDialogCourse.id,
+          studentId,
+          authToken,
+        );
         removedStudentIds.push(studentId);
       } catch (error) {
         const message =

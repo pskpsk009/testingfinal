@@ -561,7 +561,10 @@ coursesRouter.post(
       return;
     }
 
-    res.status(201).json({ roster: result.data ?? [] });
+    res.status(201).json({
+      roster: result.data ?? [],
+      addedStudentIds: result.addedStudentIds ?? [],
+    });
   },
 );
 

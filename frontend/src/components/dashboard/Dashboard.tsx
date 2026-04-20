@@ -139,12 +139,15 @@ export const Dashboard = ({ user, authToken, onLogout }: DashboardProps) => {
     };
 
     if (selectedProject && currentView !== "edit-project") {
+      const detailProjects =
+        sourceView === "archive" ? archiveProjects : augmentedProjects;
+
       return (
         <ProjectDetailView
           projectId={selectedProject}
           user={user}
           onBack={() => setSelectedProject(null)}
-          projects={augmentedProjects}
+          projects={detailProjects}
           isArchiveView={sourceView === "archive"}
           authToken={authToken}
           onProjectUpdate={(updatedList) => {

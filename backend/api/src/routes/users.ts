@@ -436,7 +436,9 @@ usersRouter.post(
     );
 
     if (courseIds.length === 0) {
-      res.status(400).json({ error: "At least one valid courseId is required." });
+      res
+        .status(400)
+        .json({ error: "At least one valid courseId is required." });
       return;
     }
 

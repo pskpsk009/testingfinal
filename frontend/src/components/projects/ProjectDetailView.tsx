@@ -85,87 +85,6 @@ interface ProjectDetailViewProps {
   onProjectRefresh?: () => void;
 }
 
-// Mock project data (in a real app, this would be fetched from API)
-const mockProject: ExtendedProject = {
-  id: 1,
-  title: "Mobile App for Community Gardens",
-  type: "Capstone",
-  status: "Approved",
-  impact: "High",
-  description:
-    "Mobile application to connect community members with local gardens, manage harvest schedules, and coordinate volunteer shifts.",
-  students: ["John Student", "Jane Doe", "Alex Kim"],
-  studentDetails: [
-    { id: 1, name: "John Student", email: "john@student.edu" },
-    { id: 2, name: "Jane Doe", email: "jane@student.edu" },
-    { id: 3, name: "Alex Kim", email: "alex@student.edu" },
-  ],
-  advisor: "Dr. Sarah Lecturer",
-  advisorEmail: "sarah.lecturer@university.edu",
-  submissionDate: "2024-03-10T00:00:00.000Z",
-  completionDate: "2024-03-15T00:00:00.000Z",
-  lastModified: "2024-03-20T00:00:00.000Z",
-  keywords: [
-    "AI",
-    "Machine Learning",
-    "Education",
-    "LMS",
-    "Personalization",
-    "Analytics",
-  ],
-  teamName: "AI Innovation Team",
-  course: "1305394",
-  courseCode: "1305394",
-  semester: "Semester 1",
-  year: "2024",
-  competitionName: null,
-  award: null,
-  teamMembers: [
-    {
-      id: "1",
-      name: "John Student",
-      email: "john@student.edu",
-      role: "student",
-      isPrimary: true,
-    },
-    {
-      id: "2",
-      name: "Jane Doe",
-      email: "jane@student.edu",
-      role: "student",
-      isPrimary: false,
-    },
-    {
-      id: "3",
-      name: "Alex Kim",
-      email: "alex@student.edu",
-      role: "student",
-      isPrimary: false,
-    },
-    {
-      id: "4",
-      name: "Dr. Sarah Lecturer",
-      email: "sarah.lecturer@university.edu",
-      role: "lecturer",
-      isPrimary: false,
-    },
-  ],
-  externalLinks: ["https://github.com/project", "https://canva.com"],
-  files: [
-    { name: "Final_Report.pdf", size: "2.3 MB", type: "PDF" },
-    { name: "Presentation.pptx", size: "8.1 MB", type: "PowerPoint" },
-  ],
-  feedback: {
-    advisor:
-      "Excellent work! The AI integration is innovative and well-implemented. Consider expanding the analytics dashboard for future iterations.",
-    coordinator:
-      "Outstanding project with high potential for real-world application. Approved for archive with high impact score.",
-    status: "approved",
-  },
-  grade: "A",
-  rubricId: null,
-};
-
 export const ProjectDetailView = ({
   projectId,
   user,
@@ -188,9 +107,33 @@ export const ProjectDetailView = ({
   const queryClient = useQueryClient();
 
   // Find the correct project by ID
-  const project =
-    (projects || [mockProject]).find((p) => p.id.toString() === projectId) ||
-    mockProject;
+  const project = projects?.find((p) => p.id.toString() === projectId);
+
+  if (!project) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-3">
+          <Button variant="outline" onClick={onBack}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back
+          </Button>
+          <div>
+            <h2 className="text-2xl font-semibold text-gray-900">
+              Project not found
+            </h2>
+            <p className="text-sm text-gray-600">
+              This project may have been removed or is still loading.
+            </p>
+          </div>
+        </div>
+        <Card>
+          <CardContent className="py-10 text-center text-gray-500">
+            No project details available.
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const canAdvisorSubmitFeedback =
     user.role === "advisor" &&

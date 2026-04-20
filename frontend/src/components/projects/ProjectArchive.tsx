@@ -51,78 +51,6 @@ interface ProjectArchiveProps {
   isLoading?: boolean;
 }
 
-// Mock data for approved projects in the archive
-const mockArchiveProjects: ProjectDto[] = [
-  {
-    id: 999,
-    title: "Smart Campus Navigation System",
-    type: "Capstone",
-    status: "Approved",
-    submissionDate: "2025-01-15",
-    lastModified: "2025-01-20",
-    description:
-      "AI-powered indoor navigation system for university campus with real-time crowd detection",
-    students: ["Alice Chen", "Bob Kumar"],
-    studentDetails: [
-      { id: 101, name: "Alice Chen", email: "alice@university.edu" },
-      { id: 102, name: "Bob Kumar", email: "bob@university.edu" },
-    ],
-    advisor: "Dr. Sarah Johnson",
-    advisorEmail: "sarah.johnson@university.edu",
-    teamName: "NavTech",
-    keywords: ["ai", "navigation", "computer vision"],
-    externalLinks: ["https://github.com/navtech/smart-campus"],
-    files: [],
-    teamMembers: [],
-    semester: "Semester 1",
-    year: "2025",
-    competitionName: null,
-    award: null,
-    courseCode: "CS-401",
-    completionDate: "2025-01-20",
-    impact: "High",
-    grade: "A",
-    feedback: {
-      advisor: "Excellent implementation of AI algorithms",
-      coordinator: "Outstanding project with real-world impact",
-    },
-  },
-  {
-    id: 998,
-    title: "Blockchain-Based Academic Credential Verification",
-    type: "Capstone",
-    status: "Approved",
-    submissionDate: "2024-12-10",
-    lastModified: "2024-12-15",
-    description:
-      "Decentralized system for verifying academic credentials using blockchain technology",
-    students: ["Carol White", "David Lee"],
-    studentDetails: [
-      { id: 103, name: "Carol White", email: "carol@university.edu" },
-      { id: 104, name: "David Lee", email: "david@university.edu" },
-    ],
-    advisor: "Dr. Michael Zhang",
-    advisorEmail: "michael.zhang@university.edu",
-    teamName: "ChainCred",
-    keywords: ["blockchain", "security", "academic"],
-    externalLinks: ["https://github.com/chaincred/verification"],
-    files: [],
-    teamMembers: [],
-    semester: "Semester 2",
-    year: "2024",
-    competitionName: null,
-    award: null,
-    courseCode: "CS-401",
-    completionDate: "2024-12-15",
-    impact: "High",
-    grade: "A",
-    feedback: {
-      advisor: "Innovative use of blockchain technology",
-      coordinator: "Well-executed project with strong technical foundation",
-    },
-  },
-];
-
 export const ProjectArchive = ({
   user,
   onViewProject,
@@ -136,20 +64,14 @@ export const ProjectArchive = ({
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
   const availableProjects = useMemo(() => {
-    // When projects are passed from the backend (even if empty), use only approved ones.
-    // Only fall back to mock data when projects is undefined (not yet fetched).
-    if (projects !== undefined) {
-      const curated = projects.filter((project) => {
-        const normalizedStatus = (project.status ?? "")
-          .toString()
-          .trim()
-          .toLowerCase();
-        return normalizedStatus === "approved";
-      });
-      return curated;
-    }
-
-    return isLoading ? [] : mockArchiveProjects;
+    const curated = (projects ?? []).filter((project) => {
+      const normalizedStatus = (project.status ?? "")
+        .toString()
+        .trim()
+        .toLowerCase();
+      return normalizedStatus === "approved";
+    });
+    return curated;
   }, [projects, isLoading]);
 
   const filteredProjects = availableProjects.filter((project) => {

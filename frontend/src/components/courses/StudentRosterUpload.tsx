@@ -44,6 +44,7 @@ import {
   deleteCourseRosterEntry,
   UpsertRosterInputDto,
 } from "@/services/courseApi";
+import { parseRosterCsv } from "@/utils/rosterCsv";
 
 interface User {
   id: string;
@@ -96,6 +97,9 @@ export const StudentRosterUpload = ({
   const [resultsByCourse, setResultsByCourse] = useState<
     Record<string, { total: number; successful: number; failed: number }>
   >({});
+  const [newStudentsByCourse, setNewStudentsByCourse] = useState<
+    Record<string, string[]>
+  >({});
 
   // Load courses from backend
   const { data: courseData = [] } = useCourses(authToken || null);
@@ -138,6 +142,10 @@ export const StudentRosterUpload = ({
           successful: mapped.length,
           failed: 0,
         });
+        setNewStudentsByCourse((prev) => ({
+          ...prev,
+          [selectedCourse]: [],
+        }));
       } catch (err) {
         setUploadedStudents([]);
         setUploadResults(null);
@@ -163,40 +171,10 @@ export const StudentRosterUpload = ({
     reader.onload = (e) => {
       try {
         const text = e.target?.result as string;
-        const lines = text.split("\n").filter((line) => line.trim());
-
-        if (lines.length < 2) {
-          throw new Error(
-            "File must contain at least a header row and one data row",
-          );
-        }
-
-        // Parse CSV (assuming format: Student ID, Name, Email, Year)
-        const students: StudentRecord[] = [];
-        const headers = lines[0].split(",").map((h) => h.trim());
-
-        for (let i = 1; i < lines.length; i++) {
-          const values = lines[i].split(",").map((v) => v.trim());
-
-          if (values.length >= 3) {
-            const student: StudentRecord = {
-              id: Date.now().toString() + i,
-              studentId: values[0] || `STU${Date.now()}${i}`,
-              name: values[1] || "Unknown Student",
-              email: values[2] || "",
-              year: values[3] || "2024",
-              status: "active",
-            };
-
-            // Basic validation
-            if (!student.email.includes("@")) {
-              student.status = "error";
-              student.errorMessage = "Invalid email format";
-            }
-
-            students.push(student);
-          }
-        }
+        const students: StudentRecord[] = parseRosterCsv(text).map((student) => ({
+          ...student,
+          status: student.status,
+        }));
 
         // Persist to backend
         persistUpload(students);
@@ -216,7 +194,7 @@ export const StudentRosterUpload = ({
   const persistUpload = async (students: StudentRecord[]) => {
     try {
       setIsUploading(true);
-      setUploadProgress(0);
+      setUploadProgress(10);
 
       const toSend: UpsertRosterInputDto[] = students
         .filter((s) => s.status !== "error")
@@ -227,17 +205,26 @@ export const StudentRosterUpload = ({
           year: s.year,
         }));
 
-      if (!authToken || !selectedCourse) return;
+      if (!authToken || !selectedCourse) {
+        throw new Error("Missing course selection or auth token.");
+      }
 
+      setUploadProgress(40);
       const saved = await upsertCourseRoster(selectedCourse, toSend, authToken);
+      setUploadProgress(80);
 
-      const mapped: StudentRecord[] = saved.map((r) => ({
+      const mapped: StudentRecord[] = saved.roster.map((r) => ({
         id: String(r.id),
         studentId: r.student_id,
         name: r.name,
         email: r.email,
         year: r.year ?? "",
         status: "enrolled",
+      }));
+
+      setNewStudentsByCourse((prev) => ({
+        ...prev,
+        [selectedCourse]: saved.addedStudentIds,
       }));
 
       setRosterByCourse((prev) => ({ ...prev, [selectedCourse]: mapped }));
@@ -299,7 +286,9 @@ export const StudentRosterUpload = ({
 
   const downloadTemplate = () => {
     const csvContent =
-      "Student ID,Name,Email,Year\nSTU001,John Doe,john.doe@university.edu,2024\nSTU002,Jane Smith,jane.smith@university.edu,2024";
+      "id,course_id,student_id,name,email,year,created_at\n" +
+      "1,4,STU401,Alex Morgan,alex.morgan4@university.edu,2024,2026-04-20T10:05:12.000Z\n" +
+      "2,4,STU402,Jamie Lee,jamie.lee4@university.edu,2024,2026-04-20T10:05:12.000Z";
     const blob = new Blob([csvContent], { type: "text/csv" });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -321,6 +310,12 @@ export const StudentRosterUpload = ({
       );
       setRosterByCourse((prev) => ({ ...prev, [selectedCourse]: updated }));
       setUploadedStudents(updated);
+      setNewStudentsByCourse((prev) => ({
+        ...prev,
+        [selectedCourse]: (prev[selectedCourse] ?? []).filter(
+          (id) => id !== studentId,
+        ),
+      }));
       setResultsByCourse((prev) => ({
         ...prev,
         [selectedCourse]: {
@@ -515,8 +510,15 @@ export const StudentRosterUpload = ({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {uploadedStudents.map((student) => (
-                      <TableRow key={student.id}>
+                    {uploadedStudents.map((student) => {
+                      const isNew = (newStudentsByCourse[selectedCourse] ?? []).includes(
+                        student.studentId,
+                      );
+                      return (
+                      <TableRow
+                        key={student.id}
+                        className={isNew ? "bg-green-50" : undefined}
+                      >
                         <TableCell className="font-medium">
                           {student.studentId}
                         </TableCell>
@@ -544,7 +546,8 @@ export const StudentRosterUpload = ({
                           </Button>
                         </TableCell>
                       </TableRow>
-                    ))}
+                      );
+                    })}
                   </TableBody>
                 </Table>
               )}

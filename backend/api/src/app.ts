@@ -6,6 +6,7 @@ import swaggerUi from "swagger-ui-express";
 import { registerRoutes } from "./routes";
 import { swaggerSpec } from "./docs/swagger";
 import { env } from "./config/env";
+import { errorHandler } from "./middleware/errorHandler";
 
 export const createApp = () => {
   const app = express();
@@ -43,6 +44,8 @@ export const createApp = () => {
   }
 
   registerRoutes(app);
+
+  app.use(errorHandler);
 
   return app;
 };

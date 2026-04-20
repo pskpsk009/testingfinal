@@ -200,7 +200,7 @@ export const upsertCourseRoster = async (
   courseId: string,
   students: UpsertRosterInputDto[],
   token: string,
-): Promise<RosterEntryDto[]> => {
+): Promise<{ roster: RosterEntryDto[]; addedStudentIds: string[] }> => {
   const response = await fetch(buildUrl(`/courses/${courseId}/roster`), {
     method: "POST",
     headers: {
@@ -210,10 +210,14 @@ export const upsertCourseRoster = async (
     body: JSON.stringify({ students }),
   });
 
-  const body = await handleJsonResponse<{ roster?: RosterEntryDto[] }>(
-    response,
-  );
-  return body?.roster || [];
+  const body = await handleJsonResponse<{
+    roster?: RosterEntryDto[];
+    addedStudentIds?: string[];
+  }>(response);
+  return {
+    roster: body?.roster || [],
+    addedStudentIds: body?.addedStudentIds || [],
+  };
 };
 
 export const deleteCourseRosterEntry = async (

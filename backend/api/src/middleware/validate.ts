@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { ZodSchema, ZodError } from "zod";
+import { ZodSchema } from "zod";
 
 /**
  * Express middleware factory that validates `req.body` against a Zod schema.
@@ -8,21 +8,19 @@ import { ZodSchema, ZodError } from "zod";
 export const validate =
   (schema: ZodSchema) =>
   (req: Request, res: Response, next: NextFunction): void => {
-    try {
-      req.body = schema.parse(req.body);
+    const result = schema.safeParse(req.body);
+
+    if (result.success) {
+      req.body = result.data;
       next();
-    } catch (err) {
-      if (err instanceof ZodError) {
-        res.status(400).json({
-          error: "Validation failed.",
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          details: err.issues.map((e: any) => ({
-            field: (e.path ?? []).join("."),
-            message: String(e.message ?? ""),
-          })),
-        });
-        return;
-      }
-      next(err);
+      return;
     }
+
+    res.status(400).json({
+      error: "Validation failed.",
+      details: result.error.issues.map((issue) => ({
+        field: issue.path.join("."),
+        message: issue.message,
+      })),
+    });
   };

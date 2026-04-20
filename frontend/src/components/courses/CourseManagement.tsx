@@ -406,7 +406,9 @@ export const CourseManagement = ({
       return;
     }
 
-    setSelectedStudentIds(new Set(courseStudents.map((student) => student.student_id)));
+    setSelectedStudentIds(
+      new Set(courseStudents.map((student) => student.student_id)),
+    );
   };
 
   const handleRemoveStudents = async (studentIds: string[]) => {
@@ -443,7 +445,11 @@ export const CourseManagement = ({
 
     for (const studentId of studentIds) {
       try {
-        await deleteCourseRosterEntry(studentsDialogCourse.id, studentId, authToken);
+        await deleteCourseRosterEntry(
+          studentsDialogCourse.id,
+          studentId,
+          authToken,
+        );
         removedStudentIds.push(studentId);
       } catch (error) {
         const message =
@@ -820,7 +826,9 @@ export const CourseManagement = ({
                         <TableRow key={student.id}>
                           <TableCell>
                             <Checkbox
-                              checked={selectedStudentIds.has(student.student_id)}
+                              checked={selectedStudentIds.has(
+                                student.student_id,
+                              )}
                               onCheckedChange={() =>
                                 toggleSelectedStudent(student.student_id)
                               }

@@ -249,14 +249,17 @@ export const assignStudentToCourses = async (
     });
   }
 
-  const response = await fetch(buildUrl(`/users/${userId}/course-assignments`), {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
+  const response = await fetch(
+    buildUrl(`/users/${userId}/course-assignments`),
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ courseIds: normalizedCourseIds }),
     },
-    body: JSON.stringify({ courseIds: normalizedCourseIds }),
-  });
+  );
 
   let body: AssignStudentCoursesResponse | ApiErrorResponse | undefined;
 
@@ -274,7 +277,9 @@ export const assignStudentToCourses = async (
     throw new ApiError(message, response.status, body);
   }
 
-  return Array.isArray((body as AssignStudentCoursesResponse)?.assignedCourseIds)
+  return Array.isArray(
+    (body as AssignStudentCoursesResponse)?.assignedCourseIds,
+  )
     ? ((body as AssignStudentCoursesResponse).assignedCourseIds ?? [])
     : [];
 };
