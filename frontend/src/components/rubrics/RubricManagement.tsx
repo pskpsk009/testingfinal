@@ -813,7 +813,7 @@ export const RubricManagement = ({
                               rawValue === "" ? undefined : Number(rawValue),
                           }));
                         }}
-                        min="1"
+                        inputMode="numeric"
                         max="100"
                       />
                     </div>
