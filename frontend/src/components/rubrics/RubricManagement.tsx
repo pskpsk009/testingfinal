@@ -804,13 +804,15 @@ export const RubricManagement = ({
                       <Input
                         id="criterionWeight"
                         type="number"
-                        value={newCriterion.weight || 10}
-                        onChange={(e) =>
+                        value={newCriterion.weight ?? ""}
+                        onChange={(e) => {
+                          const rawValue = e.target.value;
                           setNewCriterion((prev) => ({
                             ...prev,
-                            weight: parseInt(e.target.value),
-                          }))
-                        }
+                            weight:
+                              rawValue === "" ? undefined : Number(rawValue),
+                          }));
+                        }}
                         min="1"
                         max="100"
                       />
