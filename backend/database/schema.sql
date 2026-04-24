@@ -19,6 +19,21 @@ CREATE TABLE public."user" (
   role public.user_role NOT NULL DEFAULT 'student'
 );
 
+-- Allows assigning multiple roles to one user while keeping user.role
+-- for backward compatibility.
+CREATE TABLE public.user_roles (
+  id SERIAL PRIMARY KEY,
+  user_id INT NOT NULL REFERENCES public."user" (id) ON DELETE CASCADE,
+  role public.user_role NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX user_roles_unique_user_role
+  ON public.user_roles (user_id, role);
+
+CREATE INDEX user_roles_user_id_idx
+  ON public.user_roles (user_id);
+
 CREATE TABLE public.course (
   id SERIAL PRIMARY KEY,
   course_code VARCHAR NOT NULL,
