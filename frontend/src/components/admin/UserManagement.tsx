@@ -70,6 +70,11 @@ interface UserManagementProps {
   user: User;
 }
 
+interface DualRoleSelection {
+  advisor: boolean;
+  coordinator: boolean;
+}
+
 export const UserManagement = ({ user }: UserManagementProps) => {
   const { toast } = useToast();
   const [users, setUsers] = useState<User[]>([]);
@@ -93,6 +98,15 @@ export const UserManagement = ({ user }: UserManagementProps) => {
     new Set(),
   );
   const [isAssigningCourses, setIsAssigningCourses] = useState(false);
+  const [isDualDialogOpen, setIsDualDialogOpen] = useState(false);
+  const [dualTargetUser, setDualTargetUser] = useState<User | null>(null);
+  const [dualRoleSelections, setDualRoleSelections] = useState<
+    Record<string, DualRoleSelection>
+  >({});
+  const [dualSelectionDraft, setDualSelectionDraft] = useState<DualRoleSelection>({
+    advisor: false,
+    coordinator: false,
+  });
   const [newUser, setNewUser] = useState({
     name: "",
     email: "",
@@ -134,6 +148,17 @@ export const UserManagement = ({ user }: UserManagementProps) => {
   const getAuthToken = () =>
     localStorage.getItem("firebaseAuthToken") ??
     localStorage.getItem("authToken");
+
+  const isDualRoleEligible = (role: User["role"]): boolean =>
+    role === "advisor" || role === "coordinator";
+
+  const getDefaultDualSelection = (role: User["role"]): DualRoleSelection => ({
+    advisor: role === "advisor",
+    coordinator: role === "coordinator",
+  });
+
+  const getDualSelectionForUser = (targetUser: User): DualRoleSelection =>
+    dualRoleSelections[targetUser.id] ?? getDefaultDualSelection(targetUser.role);
 
   const fetchUsers = useCallback(async () => {
     if (user.role !== "coordinator") {
@@ -713,6 +738,30 @@ export const UserManagement = ({ user }: UserManagementProps) => {
     }
   };
 
+  const handleOpenDualDialog = (targetUser: User) => {
+    setDualTargetUser(targetUser);
+    setDualSelectionDraft(getDualSelectionForUser(targetUser));
+    setIsDualDialogOpen(true);
+  };
+
+  const handleSaveDualSelection = () => {
+    if (!dualTargetUser) {
+      return;
+    }
+
+    setDualRoleSelections((prev) => ({
+      ...prev,
+      [dualTargetUser.id]: dualSelectionDraft,
+    }));
+
+    setIsDualDialogOpen(false);
+
+    toast({
+      title: "Mock dual roles updated",
+      description: `Saved mock roles for ${dualTargetUser.name}.`,
+    });
+  };
+
   const validateStudentId = (studentId: string): boolean => {
     // Student ID should start with 6831503 and be followed by 3 digits
     const pattern = /^6831503\d{3}$/;
@@ -1205,6 +1254,71 @@ export const UserManagement = ({ user }: UserManagementProps) => {
         </DialogContent>
       </Dialog>
 
+      <Dialog
+        open={isDualDialogOpen}
+        onOpenChange={(open) => {
+          setIsDualDialogOpen(open);
+          if (!open) {
+            setDualTargetUser(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              Mock Dual Role Selection
+              {dualTargetUser ? ` - ${dualTargetUser.name}` : ""}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              UI only mock: this does not update backend roles or database.
+            </p>
+
+            <div className="space-y-3 rounded-md border p-4">
+              <label className="flex items-center gap-3">
+                <Checkbox
+                  checked={dualSelectionDraft.coordinator}
+                  onCheckedChange={(checked) =>
+                    setDualSelectionDraft((prev) => ({
+                      ...prev,
+                      coordinator: checked === true,
+                    }))
+                  }
+                />
+                <span className="text-sm font-medium">Coordinator</span>
+              </label>
+
+              <label className="flex items-center gap-3">
+                <Checkbox
+                  checked={dualSelectionDraft.advisor}
+                  onCheckedChange={(checked) =>
+                    setDualSelectionDraft((prev) => ({
+                      ...prev,
+                      advisor: checked === true,
+                    }))
+                  }
+                />
+                <span className="text-sm font-medium">Advisor</span>
+              </label>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsDualDialogOpen(false);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleSaveDualSelection}>Save Mock Roles</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Card>
         <CardHeader>
           <div className="flex justify-between items-center">
@@ -1361,9 +1475,19 @@ export const UserManagement = ({ user }: UserManagementProps) => {
                           <Trash2 className="w-4 h-4 mr-1" />
                           Delete
                         </Button>
-                        {u.role === "student" && (
+                        {isDualRoleEligible(u.role) && (
                           <Button
                             className="order-3"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleOpenDualDialog(u)}
+                          >
+                            Dual
+                          </Button>
+                        )}
+                        {u.role === "student" && (
+                          <Button
+                            className="order-4"
                             size="sm"
                             variant="outline"
                             onClick={() => handleOpenAssignDialog(u)}
