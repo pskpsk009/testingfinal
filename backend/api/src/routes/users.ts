@@ -24,6 +24,98 @@ const usersRouter = Router();
 
 const ASSIGNABLE_ROLES: UserRole[] = ["student", "advisor", "coordinator"];
 
+const isMissingUserRolesTableError = (error: unknown): boolean => {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const code = "code" in error ? String(error.code ?? "") : "";
+  const message =
+    "message" in error
+      ? String(error.message ?? "").toLowerCase()
+      : "";
+
+  return code === "42P01" || message.includes("user_roles");
+};
+
+const selectPrimaryRole = (roles: UserRole[]): UserRole => {
+  if (roles.includes("coordinator")) {
+    return "coordinator";
+  }
+
+  if (roles.includes("advisor")) {
+    return "advisor";
+  }
+
+  return "student";
+};
+
+const listAssignedRoles = async (
+  userId: number,
+  fallbackRole: UserRole,
+): Promise<{ roles: UserRole[]; error?: string }> => {
+  const supabase = getSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId);
+
+  if (error) {
+    if (isMissingUserRolesTableError(error)) {
+      return { roles: [fallbackRole] };
+    }
+
+    return { roles: [fallbackRole], error: error.message };
+  }
+
+  const parsedRoles = Array.from(
+    new Set(
+      (data ?? [])
+        .map((entry) => parseAssignableRole(entry.role))
+        .filter((role): role is UserRole => Boolean(role)),
+    ),
+  );
+
+  return { roles: parsedRoles.length > 0 ? parsedRoles : [fallbackRole] };
+};
+
+const replaceAssignedRoles = async (
+  userId: number,
+  roles: UserRole[],
+): Promise<{ error?: string }> => {
+  const supabase = getSupabaseAdminClient();
+
+  const deleteResult = await supabase
+    .from("user_roles")
+    .delete()
+    .eq("user_id", userId);
+
+  if (deleteResult.error) {
+    if (isMissingUserRolesTableError(deleteResult.error)) {
+      return {};
+    }
+
+    return { error: deleteResult.error.message };
+  }
+
+  if (roles.length === 0) {
+    return {};
+  }
+
+  const insertRows = roles.map((role) => ({ user_id: userId, role }));
+  const insertResult = await supabase.from("user_roles").insert(insertRows);
+
+  if (insertResult.error) {
+    if (isMissingUserRolesTableError(insertResult.error)) {
+      return {};
+    }
+
+    return { error: insertResult.error.message };
+  }
+
+  return {};
+};
+
 const extractAuthErrorCode = (error: unknown): string | undefined => {
   if (typeof error === "object" && error !== null && "code" in error) {
     const { code } = error as { code?: unknown };
@@ -177,6 +269,17 @@ usersRouter.post(
 
       res.status(500).json({ error: error.message });
       return;
+    }
+
+    if (data) {
+      const syncRolesResult = await replaceAssignedRoles(data.id, [parsedRole]);
+      if (syncRolesResult.error) {
+        // eslint-disable-next-line no-console
+        console.warn(
+          "Failed to sync user_roles after create:",
+          syncRolesResult.error,
+        );
+      }
     }
 
     // Send welcome email via Resend (non-blocking – don't fail the request)
@@ -359,6 +462,17 @@ usersRouter.patch(
 
     const updatedUser = updateResult.data;
 
+    if (updatePayload.role) {
+      const syncRolesResult = await replaceAssignedRoles(numericId, [updatePayload.role]);
+      if (syncRolesResult.error) {
+        // eslint-disable-next-line no-console
+        console.warn(
+          "Failed to sync user_roles after patch:",
+          syncRolesResult.error,
+        );
+      }
+    }
+
     try {
       const firebaseUpdatePayload: Record<string, string> = {};
 
@@ -521,6 +635,130 @@ usersRouter.post(
     res.status(201).json({
       success: true,
       assignedCourseIds: courseIds,
+    });
+  },
+);
+
+usersRouter.get(
+  "/:id/roles",
+  verifyFirebaseAuth,
+  requireCoordinator,
+  async (req: AuthedRequest, res: Response) => {
+    const numericId = Number(req.params.id);
+
+    if (!Number.isInteger(numericId) || numericId <= 0) {
+      res.status(400).json({ error: "Invalid user identifier." });
+      return;
+    }
+
+    const existingResponse = await findUserById(numericId);
+
+    if (existingResponse.error) {
+      res.status(500).json({ error: existingResponse.error.message });
+      return;
+    }
+
+    const existingUser = existingResponse.data;
+
+    if (!existingUser) {
+      res.status(404).json({ error: "User not found." });
+      return;
+    }
+
+    const rolesResponse = await listAssignedRoles(numericId, existingUser.role);
+
+    if (rolesResponse.error) {
+      res.status(500).json({ error: rolesResponse.error });
+      return;
+    }
+
+    res.json({ roles: rolesResponse.roles });
+  },
+);
+
+usersRouter.put(
+  "/:id/roles",
+  verifyFirebaseAuth,
+  requireCoordinator,
+  async (req: AuthedRequest, res: Response) => {
+    const numericId = Number(req.params.id);
+
+    if (!Number.isInteger(numericId) || numericId <= 0) {
+      res.status(400).json({ error: "Invalid user identifier." });
+      return;
+    }
+
+    const rawRoles: unknown[] = Array.isArray(req.body?.roles)
+      ? req.body.roles
+      : [];
+
+    const parsedRoles = Array.from(
+      new Set(
+        rawRoles
+          .map((role) => parseAssignableRole(role))
+          .filter((role): role is UserRole => Boolean(role)),
+      ),
+    );
+
+    if (parsedRoles.length === 0) {
+      res.status(400).json({
+        error: "At least one valid role is required.",
+      });
+      return;
+    }
+
+    const existingResponse = await findUserById(numericId);
+
+    if (existingResponse.error) {
+      res.status(500).json({ error: existingResponse.error.message });
+      return;
+    }
+
+    const existingUser = existingResponse.data;
+
+    if (!existingUser) {
+      res.status(404).json({ error: "User not found." });
+      return;
+    }
+
+    const syncRolesResult = await replaceAssignedRoles(numericId, parsedRoles);
+
+    if (syncRolesResult.error) {
+      res.status(500).json({ error: syncRolesResult.error });
+      return;
+    }
+
+    const primaryRole = selectPrimaryRole(parsedRoles);
+
+    if (existingUser.role !== primaryRole) {
+      const updateResult = await updateUserRecord(numericId, {
+        role: primaryRole,
+      });
+
+      if (updateResult.error) {
+        res.status(500).json({ error: updateResult.error.message });
+        return;
+      }
+    }
+
+    try {
+      const firebaseUser = await adminAuth.getUserByEmail(existingUser.email);
+      await adminAuth.setCustomUserClaims(firebaseUser.uid, {
+        role: primaryRole,
+      });
+    } catch (error) {
+      const code = extractAuthErrorCode(error);
+
+      if (code !== "auth/user-not-found") {
+        res.status(500).json({ error: "Failed to update authentication claims." });
+        return;
+      }
+    }
+
+    res.json({
+      userId: numericId,
+      roles: parsedRoles,
+      primaryRole,
     });
   },
 );
