@@ -2,6 +2,8 @@
 // from .env.production (or Render env) is inlined. The previous helper could not
 // be replaced by Vite and therefore resulted in "localhost:5001" in production.
 
+import { buildAuthHeaders } from "./authHeaders";
+
 const API_BASE_URL = (
   import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5001"
 ).replace(/\/$/, "");
@@ -121,10 +123,7 @@ export const updateProjectGrade = async (
 ): Promise<ProjectDto> => {
   const response = await fetch(buildUrl(`/projects/${projectId}/grade`), {
     method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
+    headers: buildAuthHeaders(token, true),
     body: JSON.stringify({ grade }),
   });
 
@@ -167,9 +166,7 @@ const handleJsonResponse = async <T>(response: Response): Promise<T> => {
 
 export const fetchProjects = async (token: string): Promise<ProjectDto[]> => {
   const response = await fetch(buildUrl("/projects"), {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+    headers: buildAuthHeaders(token),
   });
 
   const body = await handleJsonResponse<ProjectsResponseBody>(response);
@@ -185,9 +182,7 @@ export const fetchArchiveProjects = async (
   token: string,
 ): Promise<ProjectDto[]> => {
   const response = await fetch(buildUrl("/projects/archive"), {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+    headers: buildAuthHeaders(token),
   });
 
   const body = await handleJsonResponse<ProjectsResponseBody>(response);
@@ -205,10 +200,7 @@ export const submitProject = async (
 ): Promise<ProjectDto> => {
   const response = await fetch(buildUrl("/projects"), {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
+    headers: buildAuthHeaders(token, true),
     body: JSON.stringify(payload),
   });
 
@@ -232,10 +224,7 @@ export const updateProjectFeedback = async (
 ): Promise<ProjectDto> => {
   const response = await fetch(buildUrl(`/projects/${projectId}/feedback`), {
     method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
+    headers: buildAuthHeaders(token, true),
     body: JSON.stringify({ feedback }),
   });
 
@@ -259,10 +248,7 @@ export const updateProjectStatus = async (
 ): Promise<ProjectDto> => {
   const response = await fetch(buildUrl(`/projects/${projectId}/status`), {
     method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
+    headers: buildAuthHeaders(token, true),
     body: JSON.stringify({ status }),
   });
 
@@ -286,10 +272,7 @@ export const assignProjectRubric = async (
 ): Promise<ProjectDto> => {
   const response = await fetch(buildUrl(`/projects/${projectId}/rubric`), {
     method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
+    headers: buildAuthHeaders(token, true),
     body: JSON.stringify({ rubricId }),
   });
 
@@ -313,10 +296,7 @@ export const updateProject = async (
 ): Promise<ProjectDto> => {
   const response = await fetch(buildUrl(`/projects/${projectId}`), {
     method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
+    headers: buildAuthHeaders(token, true),
     body: JSON.stringify(payload),
   });
 
@@ -346,9 +326,7 @@ export const uploadProjectFiles = async (
 
   const response = await fetch(buildUrl(`/projects/${projectId}/files`), {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+    headers: buildAuthHeaders(token),
     body: formData,
   });
 
@@ -376,9 +354,7 @@ export const downloadProjectFile = async (
   const response = await fetch(
     buildUrl(`/projects/${projectId}/files/${encodeURIComponent(filename)}`),
     {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      headers: buildAuthHeaders(token),
     },
   );
 

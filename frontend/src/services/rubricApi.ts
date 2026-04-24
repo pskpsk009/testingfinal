@@ -1,4 +1,6 @@
 // inline build-time API URL constant
+import { buildAuthHeaders } from "./authHeaders";
+
 const API_BASE_URL = (
   import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5001"
 ).replace(/\/$/, "");
@@ -104,7 +106,7 @@ const handleJsonResponse = async <T>(response: Response): Promise<T> => {
 
 export const fetchRubrics = async (token: string): Promise<RubricDto[]> => {
   const response = await fetch(buildUrl("/rubrics"), {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: buildAuthHeaders(token),
   });
 
   const body = await handleJsonResponse<{ rubrics?: RubricDto[] }>(response);
@@ -116,7 +118,7 @@ export const fetchRubricById = async (
   token: string,
 ): Promise<RubricDto> => {
   const response = await fetch(buildUrl(`/rubrics/${id}`), {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: buildAuthHeaders(token),
   });
 
   const body = await handleJsonResponse<{ rubric?: RubricDto }>(response);
@@ -130,10 +132,7 @@ export const createRubric = async (
 ): Promise<RubricDto> => {
   const response = await fetch(buildUrl("/rubrics"), {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
+    headers: buildAuthHeaders(token, true),
     body: JSON.stringify(payload),
   });
 
@@ -149,10 +148,7 @@ export const updateRubric = async (
 ): Promise<RubricDto> => {
   const response = await fetch(buildUrl(`/rubrics/${id}`), {
     method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
+    headers: buildAuthHeaders(token, true),
     body: JSON.stringify(payload),
   });
 
@@ -167,7 +163,7 @@ export const toggleRubricStatus = async (
 ): Promise<RubricDto> => {
   const response = await fetch(buildUrl(`/rubrics/${id}/toggle`), {
     method: "PATCH",
-    headers: { Authorization: `Bearer ${token}` },
+    headers: buildAuthHeaders(token),
   });
 
   const body = await handleJsonResponse<{ rubric?: RubricDto }>(response);
@@ -181,7 +177,7 @@ export const deleteRubric = async (
 ): Promise<void> => {
   const response = await fetch(buildUrl(`/rubrics/${id}`), {
     method: "DELETE",
-    headers: { Authorization: `Bearer ${token}` },
+    headers: buildAuthHeaders(token),
   });
 
   await handleJsonResponse<{ message: string }>(response);

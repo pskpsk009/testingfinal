@@ -4,6 +4,8 @@
 // always fall back to localhost in the browser.  the build-time constant below
 // ensures the correct API base is compiled in.
 
+import { buildAuthHeaders } from "./authHeaders";
+
 const API_BASE_URL = (
   import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5001"
 ).replace(/\/$/, "");
@@ -74,9 +76,7 @@ const handleJsonResponse = async <T>(response: Response): Promise<T> => {
 
 export const fetchCourses = async (token: string): Promise<CourseDto[]> => {
   const response = await fetch(buildUrl("/courses"), {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+    headers: buildAuthHeaders(token),
   });
 
   const body = await handleJsonResponse<CoursesResponseBody>(response);
@@ -94,10 +94,7 @@ export const createCourse = async (
 ): Promise<CourseDto> => {
   const response = await fetch(buildUrl("/courses"), {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
+    headers: buildAuthHeaders(token, true),
     body: JSON.stringify(payload),
   });
 
@@ -117,10 +114,7 @@ export const updateCourse = async (
 ): Promise<CourseDto> => {
   const response = await fetch(buildUrl(`/courses/${courseId}`), {
     method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
+    headers: buildAuthHeaders(token, true),
     body: JSON.stringify(payload),
   });
 
@@ -139,9 +133,7 @@ export const deleteCourse = async (
 ): Promise<void> => {
   const response = await fetch(buildUrl(`/courses/${courseId}`), {
     method: "DELETE",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+    headers: buildAuthHeaders(token),
   });
 
   await handleJsonResponse<{ message: string }>(response);
@@ -152,9 +144,7 @@ export const fetchCourseProjects = async (
   token: string,
 ): Promise<any[]> => {
   const response = await fetch(buildUrl(`/courses/${courseId}/projects`), {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+    headers: buildAuthHeaders(token),
   });
 
   const body = await handleJsonResponse<{ projects?: any[] }>(response);
@@ -185,9 +175,7 @@ export const fetchCourseRoster = async (
   token: string,
 ): Promise<RosterEntryDto[]> => {
   const response = await fetch(buildUrl(`/courses/${courseId}/roster`), {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+    headers: buildAuthHeaders(token),
   });
 
   const body = await handleJsonResponse<{ roster?: RosterEntryDto[] }>(
@@ -203,10 +191,7 @@ export const upsertCourseRoster = async (
 ): Promise<{ roster: RosterEntryDto[]; addedStudentIds: string[] }> => {
   const response = await fetch(buildUrl(`/courses/${courseId}/roster`), {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
+    headers: buildAuthHeaders(token, true),
     body: JSON.stringify({ students }),
   });
 
@@ -229,9 +214,7 @@ export const deleteCourseRosterEntry = async (
     buildUrl(`/courses/${courseId}/roster/${encodeURIComponent(studentId)}`),
     {
       method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      headers: buildAuthHeaders(token),
     },
   );
   await handleJsonResponse<{ success: boolean }>(response);

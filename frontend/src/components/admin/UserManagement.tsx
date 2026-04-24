@@ -47,8 +47,10 @@ import {
   assignStudentToCourses,
   createUser,
   deleteUser,
+  getUserRoles,
   listUsers,
   updateUser,
+  updateUserRoles,
 } from "@/services/userApi";
 import { CourseDto, fetchCourses } from "@/services/courseApi";
 
@@ -103,10 +105,13 @@ export const UserManagement = ({ user }: UserManagementProps) => {
   const [dualRoleSelections, setDualRoleSelections] = useState<
     Record<string, DualRoleSelection>
   >({});
-  const [dualSelectionDraft, setDualSelectionDraft] = useState<DualRoleSelection>({
-    advisor: false,
-    coordinator: false,
-  });
+  const [dualSelectionDraft, setDualSelectionDraft] =
+    useState<DualRoleSelection>({
+      advisor: false,
+      coordinator: false,
+    });
+  const [isLoadingDualRoles, setIsLoadingDualRoles] = useState(false);
+  const [isSavingDualRoles, setIsSavingDualRoles] = useState(false);
   const [newUser, setNewUser] = useState({
     name: "",
     email: "",
@@ -738,28 +743,132 @@ export const UserManagement = ({ user }: UserManagementProps) => {
     }
   };
 
-  const handleOpenDualDialog = (targetUser: User) => {
+  const handleOpenDualDialog = async (targetUser: User) => {
+    const token = getAuthToken();
+
     setDualTargetUser(targetUser);
     setDualSelectionDraft(getDualSelectionForUser(targetUser));
     setIsDualDialogOpen(true);
+
+    if (!token) {
+      toast({
+        title: "Authentication required",
+        description: "Please sign in again to manage user roles.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoadingDualRoles(true);
+
+    try {
+      const response = await getUserRoles(Number(targetUser.id), token);
+      const nextSelection: DualRoleSelection = {
+        advisor: response.roles.includes("advisor"),
+        coordinator: response.roles.includes("coordinator"),
+      };
+
+      setDualSelectionDraft(nextSelection);
+      setDualRoleSelections((prev) => ({
+        ...prev,
+        [targetUser.id]: nextSelection,
+      }));
+    } catch (error) {
+      const message =
+        error instanceof ApiError
+          ? error.message
+          : "Failed to load assigned roles for this user.";
+
+      toast({
+        title: "Error",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingDualRoles(false);
+    }
   };
 
-  const handleSaveDualSelection = () => {
+  const handleSaveDualSelection = async () => {
     if (!dualTargetUser) {
       return;
     }
 
-    setDualRoleSelections((prev) => ({
-      ...prev,
-      [dualTargetUser.id]: dualSelectionDraft,
-    }));
+    const token = getAuthToken();
 
-    setIsDualDialogOpen(false);
+    if (!token) {
+      toast({
+        title: "Authentication required",
+        description: "Please sign in again to manage user roles.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    toast({
-      title: "Mock dual roles updated",
-      description: `Saved mock roles for ${dualTargetUser.name}.`,
-    });
+    const rolesToSave: Array<"advisor" | "coordinator"> = [];
+
+    if (dualSelectionDraft.advisor) {
+      rolesToSave.push("advisor");
+    }
+
+    if (dualSelectionDraft.coordinator) {
+      rolesToSave.push("coordinator");
+    }
+
+    if (rolesToSave.length === 0) {
+      toast({
+        title: "Select at least one role",
+        description: "Advisor or Coordinator must remain selected.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSavingDualRoles(true);
+
+    try {
+      const response = await updateUserRoles(
+        Number(dualTargetUser.id),
+        rolesToSave,
+        token,
+      );
+
+      setDualRoleSelections((prev) => ({
+        ...prev,
+        [dualTargetUser.id]: dualSelectionDraft,
+      }));
+
+      setUsers((prev) =>
+        prev.map((candidate) =>
+          candidate.id === dualTargetUser.id
+            ? {
+                ...candidate,
+                role: response.primaryRole,
+              }
+            : candidate,
+        ),
+      );
+
+      setIsDualDialogOpen(false);
+
+      toast({
+        title: "Roles updated",
+        description: `Saved roles for ${dualTargetUser.name}.`,
+      });
+    } catch (error) {
+      const message =
+        error instanceof ApiError
+          ? error.message
+          : "Failed to update user roles.";
+
+      toast({
+        title: "Error",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingDualRoles(false);
+    }
   };
 
   const validateStudentId = (studentId: string): boolean => {
@@ -1272,14 +1381,13 @@ export const UserManagement = ({ user }: UserManagementProps) => {
           </DialogHeader>
 
           <div className="space-y-4">
-            <p className="text-sm text-gray-600">
-              UI only mock: this does not update backend roles or database.
-            </p>
+            <p className="text-sm text-gray-600">Assign one or both roles.</p>
 
             <div className="space-y-3 rounded-md border p-4">
               <label className="flex items-center gap-3">
                 <Checkbox
                   checked={dualSelectionDraft.coordinator}
+                  disabled={isLoadingDualRoles || isSavingDualRoles}
                   onCheckedChange={(checked) =>
                     setDualSelectionDraft((prev) => ({
                       ...prev,
@@ -1293,6 +1401,7 @@ export const UserManagement = ({ user }: UserManagementProps) => {
               <label className="flex items-center gap-3">
                 <Checkbox
                   checked={dualSelectionDraft.advisor}
+                  disabled={isLoadingDualRoles || isSavingDualRoles}
                   onCheckedChange={(checked) =>
                     setDualSelectionDraft((prev) => ({
                       ...prev,
@@ -1307,13 +1416,25 @@ export const UserManagement = ({ user }: UserManagementProps) => {
             <div className="flex justify-end gap-2">
               <Button
                 variant="outline"
+                disabled={isSavingDualRoles}
                 onClick={() => {
                   setIsDualDialogOpen(false);
                 }}
               >
                 Cancel
               </Button>
-              <Button onClick={handleSaveDualSelection}>Save Mock Roles</Button>
+              <Button
+                disabled={isLoadingDualRoles || isSavingDualRoles}
+                onClick={() => {
+                  void handleSaveDualSelection();
+                }}
+              >
+                {isLoadingDualRoles
+                  ? "Loading..."
+                  : isSavingDualRoles
+                    ? "Saving..."
+                    : "Save Roles"}
+              </Button>
             </div>
           </div>
         </DialogContent>
@@ -1480,7 +1601,9 @@ export const UserManagement = ({ user }: UserManagementProps) => {
                             className="order-3"
                             size="sm"
                             variant="outline"
-                            onClick={() => handleOpenDualDialog(u)}
+                            onClick={() => {
+                              void handleOpenDualDialog(u);
+                            }}
                           >
                             Dual
                           </Button>

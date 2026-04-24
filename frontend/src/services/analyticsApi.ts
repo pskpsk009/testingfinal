@@ -1,3 +1,5 @@
+import { buildAuthHeaders } from "./authHeaders";
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5001";
 
 export interface AnalyticsFilters {
@@ -90,9 +92,7 @@ export interface DetailedProject {
 class AnalyticsService {
   private async fetchWithAuth<T>(endpoint: string, token: string): Promise<T> {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      headers: buildAuthHeaders(token),
     });
 
     if (!response.ok) {
@@ -241,9 +241,7 @@ class AnalyticsService {
     const response = await fetch(
       `${API_BASE_URL}/analytics/export${query ? `?${query}` : ""}`,
       {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: buildAuthHeaders(token),
       }
     );
 

@@ -155,6 +155,7 @@ const Index = () => {
     localStorage.removeItem("passwordSkipped");
     localStorage.removeItem("passwordSet");
     localStorage.removeItem("mockRoleOverride");
+    localStorage.removeItem("actingRole");
     void signOut(auth).catch((error) => {
       console.error("Failed to sign out from Firebase", error);
     });
@@ -163,6 +164,7 @@ const Index = () => {
   const handleMockRoleSelect = (role: SwitchableRole) => {
     setSelectedMockRole(role);
     localStorage.setItem("mockRoleOverride", role);
+    localStorage.setItem("actingRole", role);
   };
 
   const handlePasswordModalClose = () => {

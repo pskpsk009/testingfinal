@@ -1,4 +1,6 @@
 // inline API base url at build time to avoid runtime fallback to localhost
+import { buildAuthHeaders } from "./authHeaders";
+
 const API_BASE_URL = (
   import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5001"
 ).replace(/\/$/, "");
@@ -32,6 +34,16 @@ export interface UpdateUserRequest {
   role?: CreateUserRole;
 }
 
+export interface UserRolesResponse {
+  roles: CreateUserRole[];
+}
+
+export interface UpdateUserRolesResponse {
+  userId: number;
+  roles: CreateUserRole[];
+  primaryRole: CreateUserRole;
+}
+
 interface UpdateUserResponse {
   user?: ApiUser | null;
 }
@@ -58,10 +70,7 @@ export const createUser = async (
 ): Promise<ApiUser> => {
   const response = await fetch(buildUrl("/users"), {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
+    headers: buildAuthHeaders(token, true),
     body: JSON.stringify(payload),
   });
 
@@ -98,9 +107,7 @@ interface ListUsersResponse {
 
 export const listUsers = async (token: string): Promise<ApiUser[]> => {
   const response = await fetch(buildUrl("/users"), {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+    headers: buildAuthHeaders(token),
   });
 
   let body: ListUsersResponse | ApiErrorResponse | undefined;
@@ -166,10 +173,7 @@ export const updateUser = async (
 
   const response = await fetch(buildUrl(`/users/${id}`), {
     method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
+    headers: buildAuthHeaders(token, true),
     body: JSON.stringify(sanitizedPayload),
   });
 
@@ -203,9 +207,7 @@ export const updateUser = async (
 export const deleteUser = async (id: number, token: string): Promise<void> => {
   const response = await fetch(buildUrl(`/users/${id}`), {
     method: "DELETE",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+    headers: buildAuthHeaders(token),
   });
 
   if (!response.ok) {
@@ -253,10 +255,7 @@ export const assignStudentToCourses = async (
     buildUrl(`/users/${userId}/course-assignments`),
     {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
+      headers: buildAuthHeaders(token, true),
       body: JSON.stringify({ courseIds: normalizedCourseIds }),
     },
   );
@@ -282,4 +281,92 @@ export const assignStudentToCourses = async (
   )
     ? ((body as AssignStudentCoursesResponse).assignedCourseIds ?? [])
     : [];
+};
+
+export const getUserRoles = async (
+  id: number,
+  token: string,
+): Promise<UserRolesResponse> => {
+  const response = await fetch(buildUrl(`/users/${id}/roles`), {
+    headers: buildAuthHeaders(token),
+  });
+
+  let body: UserRolesResponse | ApiErrorResponse | undefined;
+
+  try {
+    body = (await response.json()) as typeof body;
+  } catch (_error) {
+    body = undefined;
+  }
+
+  if (!response.ok) {
+    const message =
+      body && "error" in body && typeof body.error === "string"
+        ? body.error
+        : "Failed to load user roles.";
+    throw new ApiError(message, response.status, body);
+  }
+
+  if (!body || !("roles" in body) || !Array.isArray(body.roles)) {
+    throw new ApiError("Roles payload missing in response.", response.status, body);
+  }
+
+  return {
+    roles: body.roles,
+  };
+};
+
+export const updateUserRoles = async (
+  id: number,
+  roles: CreateUserRole[],
+  token: string,
+): Promise<UpdateUserRolesResponse> => {
+  const normalizedRoles = Array.from(
+    new Set(
+      roles.filter(
+        (role) =>
+          role === "student" || role === "advisor" || role === "coordinator",
+      ),
+    ),
+  );
+
+  if (normalizedRoles.length === 0) {
+    throw new ApiError("At least one role is required.", 400, { roles });
+  }
+
+  const response = await fetch(buildUrl(`/users/${id}/roles`), {
+    method: "PUT",
+    headers: buildAuthHeaders(token, true),
+    body: JSON.stringify({ roles: normalizedRoles }),
+  });
+
+  let body: UpdateUserRolesResponse | ApiErrorResponse | undefined;
+
+  try {
+    body = (await response.json()) as typeof body;
+  } catch (_error) {
+    body = undefined;
+  }
+
+  if (!response.ok) {
+    const message =
+      body && "error" in body && typeof body.error === "string"
+        ? body.error
+        : "Failed to update user roles.";
+    throw new ApiError(message, response.status, body);
+  }
+
+  if (
+    !body ||
+    !("userId" in body) ||
+    typeof body.userId !== "number" ||
+    !("roles" in body) ||
+    !Array.isArray(body.roles) ||
+    !("primaryRole" in body) ||
+    typeof body.primaryRole !== "string"
+  ) {
+    throw new ApiError("Updated roles payload missing in response.", response.status, body);
+  }
+
+  return body;
 };
