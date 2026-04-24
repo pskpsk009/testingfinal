@@ -318,6 +318,44 @@ usersRouter.post(
  *         description: User with the specified email was not found.
  */
 usersRouter.get(
+  "/me/roles",
+  verifyFirebaseAuth,
+  async (req: AuthedRequest, res: Response) => {
+    const emailFromToken = req.user?.email;
+
+    if (!emailFromToken) {
+      res
+        .status(400)
+        .json({ error: "Email address missing from authentication token." });
+      return;
+    }
+
+    const existingResponse = await findUserByEmail(emailFromToken);
+
+    if (existingResponse.error) {
+      res.status(500).json({ error: existingResponse.error.message });
+      return;
+    }
+
+    const existingUser = existingResponse.data;
+
+    if (!existingUser) {
+      res.status(404).json({ error: "User not found." });
+      return;
+    }
+
+    const rolesResponse = await listAssignedRoles(existingUser.id, existingUser.role);
+
+    if (rolesResponse.error) {
+      res.status(500).json({ error: rolesResponse.error });
+      return;
+    }
+
+    res.json({ roles: rolesResponse.roles });
+  },
+);
+
+usersRouter.get(
   "/",
   verifyFirebaseAuth,
   requireCoordinator,

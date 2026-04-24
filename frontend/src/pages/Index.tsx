@@ -6,16 +6,9 @@ import { MockRoleChooser, SwitchableRole } from "@/components/auth/MockRoleChoos
 import { Dashboard } from "@/components/dashboard/Dashboard";
 import { auth } from "@/lib/firebase";
 import { onIdTokenChanged } from "firebase/auth";
+import { getMyRoles } from "@/services/userApi";
 
 type AppRole = "student" | "coordinator" | "advisor";
-
-const DUAL_ROLE_EMAILS = (import.meta.env.VITE_DUAL_ROLE_EMAILS ?? "")
-  .split(",")
-  .map((email) => email.trim().toLowerCase())
-  .filter((email) => email.length > 0);
-
-const canUseDualRoleChooser = (email: string) =>
-  DUAL_ROLE_EMAILS.includes(email.trim().toLowerCase());
 
 const Index = () => {
   const [user, setUser] = useState<{
@@ -28,6 +21,8 @@ const Index = () => {
   const [authToken, setAuthToken] = useState<string | null>(null);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [selectedMockRole, setSelectedMockRole] = useState<SwitchableRole | null>(null);
+  const [canChooseRole, setCanChooseRole] = useState(false);
+  const [isResolvingRoleAccess, setIsResolvingRoleAccess] = useState(false);
 
   // Load user from localStorage on component mount
   useEffect(() => {
@@ -50,16 +45,68 @@ const Index = () => {
       }
     }
 
-    const savedMockRole = localStorage.getItem("mockRoleOverride");
-    if (savedMockRole === "advisor" || savedMockRole === "coordinator") {
-      setSelectedMockRole(savedMockRole);
-    }
-
     if (savedToken) {
       setAuthToken(savedToken);
     }
     setIsLoading(false);
   }, []);
+
+  useEffect(() => {
+    if (!user || !authToken) {
+      setCanChooseRole(false);
+      setIsResolvingRoleAccess(false);
+      return;
+    }
+
+    let isCancelled = false;
+    setIsResolvingRoleAccess(true);
+
+    const resolveRoleAccess = async () => {
+      try {
+        const rolesResponse = await getMyRoles(authToken);
+        const hasDualRole =
+          rolesResponse.roles.includes("advisor") &&
+          rolesResponse.roles.includes("coordinator");
+
+        if (isCancelled) {
+          return;
+        }
+
+        setCanChooseRole(hasDualRole);
+
+        if (hasDualRole) {
+          const savedMockRole = localStorage.getItem("mockRoleOverride");
+          if (savedMockRole === "advisor" || savedMockRole === "coordinator") {
+            setSelectedMockRole(savedMockRole);
+          }
+        } else {
+          setSelectedMockRole(null);
+          localStorage.removeItem("mockRoleOverride");
+          localStorage.removeItem("actingRole");
+        }
+      } catch (error) {
+        if (isCancelled) {
+          return;
+        }
+
+        console.warn("Failed to resolve dual-role access", error);
+        setCanChooseRole(false);
+        setSelectedMockRole(null);
+        localStorage.removeItem("mockRoleOverride");
+        localStorage.removeItem("actingRole");
+      } finally {
+        if (!isCancelled) {
+          setIsResolvingRoleAccess(false);
+        }
+      }
+    };
+
+    void resolveRoleAccess();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [authToken, user]);
 
   // Keep Firebase ID token fresh and synced
   useEffect(() => {
@@ -129,9 +176,10 @@ const Index = () => {
     setAuthToken(token);
     localStorage.setItem("authToken", token);
 
-    // Force role choice on each fresh login for whitelisted dual-role emails.
+    // Force role choice resolution on each fresh login.
     setSelectedMockRole(null);
     localStorage.removeItem("mockRoleOverride");
+    localStorage.removeItem("actingRole");
 
     // Show password modal for first-time email link sign-ins
     if (isFirstLogin) {
@@ -187,8 +235,18 @@ const Index = () => {
     return <LoginForm onLogin={handleLogin} />;
   }
 
-  const shouldShowMockRoleChooser =
-    canUseDualRoleChooser(user.email) && selectedMockRole === null;
+  if (isResolvingRoleAccess) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Checking role access...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const shouldShowMockRoleChooser = canChooseRole && selectedMockRole === null;
 
   if (shouldShowMockRoleChooser) {
     return (
@@ -206,7 +264,7 @@ const Index = () => {
     email: string;
     role: AppRole;
   } =
-    canUseDualRoleChooser(user.email) && selectedMockRole
+    canChooseRole && selectedMockRole
       ? { ...user, role: selectedMockRole }
       : user;
 

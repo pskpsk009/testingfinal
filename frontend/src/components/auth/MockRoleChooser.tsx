@@ -20,13 +20,13 @@ export const MockRoleChooser = ({
         <CardHeader>
           <CardTitle>Choose Dashboard Role</CardTitle>
           <CardDescription>
-            This is a temporary mock login mode for dual-role testing.
+            Your account has both Advisor and Coordinator access.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-            Frontend mock mode: changing role here only switches dashboard view.
-            Backend permissions still follow your real Firebase role.
+            Select which role to use for this session. You can switch by
+            logging out and choosing again.
           </div>
 
           <div className="space-y-2">

@@ -316,6 +316,36 @@ export const getUserRoles = async (
   };
 };
 
+export const getMyRoles = async (token: string): Promise<UserRolesResponse> => {
+  const response = await fetch(buildUrl(`/users/me/roles`), {
+    headers: buildAuthHeaders(token),
+  });
+
+  let body: UserRolesResponse | ApiErrorResponse | undefined;
+
+  try {
+    body = (await response.json()) as typeof body;
+  } catch (_error) {
+    body = undefined;
+  }
+
+  if (!response.ok) {
+    const message =
+      body && "error" in body && typeof body.error === "string"
+        ? body.error
+        : "Failed to load your roles.";
+    throw new ApiError(message, response.status, body);
+  }
+
+  if (!body || !("roles" in body) || !Array.isArray(body.roles)) {
+    throw new ApiError("Roles payload missing in response.", response.status, body);
+  }
+
+  return {
+    roles: body.roles,
+  };
+};
+
 export const updateUserRoles = async (
   id: number,
   roles: CreateUserRole[],
