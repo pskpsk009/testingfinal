@@ -2,20 +2,32 @@ import { useState, useEffect } from "react";
 import { signOut } from "firebase/auth";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { SetPasswordModal } from "@/components/auth/SetPasswordModal";
+import { MockRoleChooser, SwitchableRole } from "@/components/auth/MockRoleChooser";
 import { Dashboard } from "@/components/dashboard/Dashboard";
 import { auth } from "@/lib/firebase";
 import { onIdTokenChanged } from "firebase/auth";
+
+type AppRole = "student" | "coordinator" | "advisor";
+
+const DUAL_ROLE_EMAILS = (import.meta.env.VITE_DUAL_ROLE_EMAILS ?? "")
+  .split(",")
+  .map((email) => email.trim().toLowerCase())
+  .filter((email) => email.length > 0);
+
+const canUseDualRoleChooser = (email: string) =>
+  DUAL_ROLE_EMAILS.includes(email.trim().toLowerCase());
 
 const Index = () => {
   const [user, setUser] = useState<{
     id: string;
     name: string;
     email: string;
-    role: "student" | "coordinator" | "advisor";
+    role: AppRole;
   } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [authToken, setAuthToken] = useState<string | null>(null);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [selectedMockRole, setSelectedMockRole] = useState<SwitchableRole | null>(null);
 
   // Load user from localStorage on component mount
   useEffect(() => {
@@ -36,6 +48,11 @@ const Index = () => {
         console.error("Failed to parse saved user data:", error);
         localStorage.removeItem("user");
       }
+    }
+
+    const savedMockRole = localStorage.getItem("mockRoleOverride");
+    if (savedMockRole === "advisor" || savedMockRole === "coordinator") {
+      setSelectedMockRole(savedMockRole);
     }
 
     if (savedToken) {
@@ -102,7 +119,7 @@ const Index = () => {
       id: string;
       name: string;
       email: string;
-      role: "student" | "coordinator" | "advisor";
+      role: AppRole;
     },
     token: string,
     isFirstLogin?: boolean,
@@ -111,6 +128,10 @@ const Index = () => {
     localStorage.setItem("user", JSON.stringify(userData));
     setAuthToken(token);
     localStorage.setItem("authToken", token);
+
+    // Force role choice on each fresh login for whitelisted dual-role emails.
+    setSelectedMockRole(null);
+    localStorage.removeItem("mockRoleOverride");
 
     // Show password modal for first-time email link sign-ins
     if (isFirstLogin) {
@@ -122,6 +143,7 @@ const Index = () => {
     setUser(null);
     setAuthToken(null);
     setShowPasswordModal(false);
+    setSelectedMockRole(null);
     localStorage.removeItem("user");
     localStorage.removeItem("currentView");
     localStorage.removeItem("selectedProject");
@@ -132,9 +154,15 @@ const Index = () => {
     localStorage.removeItem("isFirstLogin");
     localStorage.removeItem("passwordSkipped");
     localStorage.removeItem("passwordSet");
+    localStorage.removeItem("mockRoleOverride");
     void signOut(auth).catch((error) => {
       console.error("Failed to sign out from Firebase", error);
     });
+  };
+
+  const handleMockRoleSelect = (role: SwitchableRole) => {
+    setSelectedMockRole(role);
+    localStorage.setItem("mockRoleOverride", role);
   };
 
   const handlePasswordModalClose = () => {
@@ -157,13 +185,40 @@ const Index = () => {
     return <LoginForm onLogin={handleLogin} />;
   }
 
+  const shouldShowMockRoleChooser =
+    canUseDualRoleChooser(user.email) && selectedMockRole === null;
+
+  if (shouldShowMockRoleChooser) {
+    return (
+      <MockRoleChooser
+        email={user.email}
+        onSelectRole={handleMockRoleSelect}
+        onLogout={handleLogout}
+      />
+    );
+  }
+
+  const effectiveUser: {
+    id: string;
+    name: string;
+    email: string;
+    role: AppRole;
+  } =
+    canUseDualRoleChooser(user.email) && selectedMockRole
+      ? { ...user, role: selectedMockRole }
+      : user;
+
   return (
     <>
-      <Dashboard user={user} authToken={authToken} onLogout={handleLogout} />
+      <Dashboard
+        user={effectiveUser}
+        authToken={authToken}
+        onLogout={handleLogout}
+      />
       <SetPasswordModal
         open={showPasswordModal}
         onClose={handlePasswordModalClose}
-        userEmail={user.email}
+        userEmail={effectiveUser.email}
       />
     </>
   );
